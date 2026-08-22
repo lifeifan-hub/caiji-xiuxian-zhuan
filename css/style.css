@@ -163,6 +163,10 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 
 /* 反馈 */
 .toast { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); background: rgba(20,14,38,.96); border: 1px solid var(--gold); color: var(--gold2); padding: 9px 18px; border-radius: 999px; z-index: 99; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.5); max-width: 90%; text-align: center; }
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.62); display: flex; align-items: center; justify-content: center; z-index: 120; }
+.modal { width: min(92%, 360px); background: linear-gradient(180deg, #221a45, #171130); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.modal h3 { color: var(--gold2); margin-bottom: 8px; letter-spacing: 2px; }
+.modal .row { justify-content: space-between; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
 .sec-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }

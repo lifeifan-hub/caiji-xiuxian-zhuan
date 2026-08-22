@@ -625,6 +625,40 @@
   }, 1000);
 
   // ---------- 启动 ----------
+  function showOfflineModal(gains) {
+    const g = S.game;
+    const zi = g.res.ziqi;
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="modal-mask"><div class="modal">' +
+        '<h3>离线奖励</h3>' +
+        '<div class="dim">离线时长：<b class="gold">' + C.formatDuration(gains.seconds) + '</b>（最高12小时）</div>' +
+        '<div class="dim mt8" style="margin-top:10px">当前收益：</div>' +
+        '<div class="row mt8"><span class="muted">铜钱</span><b class="gold">+' + F(gains.copper) + '</b></div>' +
+        '<div class="row"><span class="muted">修为</span><b class="gold">+' + F(gains.xiuwei) + '</b></div>' +
+        '<div class="dim mt8">当前鸿蒙紫气：<b class="gold">' + F(zi) + '</b></div>' +
+        '<div class="mt12"><button class="btn btn-green block" data-of="1" data-c="0">免费领取（x1）</button></div>' +
+        '<div class="mt8"><button class="btn btn-blue block" data-of="2" data-c="100"' + (zi < 100 ? ' disabled' : '') + '>双倍领取（x2）· 消耗100紫气</button></div>' +
+        '<div class="mt8"><button class="btn btn-gold block" data-of="3" data-c="200"' + (zi < 200 ? ' disabled' : '') + '>三倍领取（x3）· 消耗200紫气</button></div>' +
+      '</div></div>'
+    );
+    document.querySelector('.modal-mask').querySelectorAll('[data-of]').forEach(btn => {
+      btn.addEventListener('click', () => applyOffline(parseInt(btn.dataset.of), parseInt(btn.dataset.c), gains));
+    });
+  }
+
+  function applyOffline(mult, cost, gains) {
+    const g = S.game;
+    if (cost > 0 && g.res.ziqi < cost) { toast('鸿蒙紫气不足'); return; }
+    g.res.xiuwei += gains.xiuwei * mult;
+    g.res.copper += gains.copper * mult;
+    if (cost > 0) g.res.ziqi -= cost;
+    C.save(g);
+    const mask = document.querySelector('.modal-mask');
+    if (mask) mask.remove();
+    renderHeader();
+    toast('已领取离线奖励（x' + mult + '）');
+  }
+
   function boot() {
     bindMusic();
     updateMusicBtn();
@@ -634,18 +668,14 @@
       $('#start').classList.add('hide');
       $('#game').classList.remove('hide');
       buildNav();
-      // 离线结算
+      // 离线奖励：离线 ≥1 分钟重返弹出「离线奖励」弹窗
       const now = Date.now();
       const dt = (now - (saved.lastTick || now)) / 1000;
-      if (dt > 5) {
+      if (dt >= 60) {
         const gains = C.offlineGains(saved, dt);
-        saved.res.xiuwei += gains.xiuwei;
-        saved.res.copper += gains.copper;
-        saved.res.qiongjiang += gains.qiongjiang;
-        saved.res.lingqi += gains.lingqi;
         saved.lastTick = now;
         C.save(saved);
-        alert('欢迎回来！离线 ' + C.formatDuration(gains.seconds) + '\n修为+' + F(gains.xiuwei) + ' 铜钱+' + F(gains.copper) + '\n琼浆玉液+' + F(gains.qiongjiang) + ' 灵气+' + F(gains.lingqi));
+        showOfflineModal(gains);
       }
       showTab('main');
       loadSFromGame();
