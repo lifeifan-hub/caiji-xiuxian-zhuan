@@ -722,6 +722,19 @@
   }
 
   // ---------- 战斗引擎 ----------
+  // 战斗附加属性（命中/闪避/暴抗/减伤/抗性/格挡/控制/能量）
+  function cstats(spd, def, crit, ctrlAcc, startEnergy, regen) {
+    return {
+      hit: 100, dodge: Math.min(30, Math.round(spd / 8)),
+      crit: crit || 0, critRes: Math.min(40, Math.round(def / 25)),
+      dmgBoost: 0, dmgReduce: Math.min(50, Math.round(def / 20)),
+      skillBonus: 0, skillRes: 0,
+      ctrlBoost: ctrlAcc || 0, ctrlRes: 0,
+      physBlock: Math.round(def / 30), magicBlock: Math.round(def / 30),
+      ctrlDurBoost: 0, ctrlDurRes: 0,
+      startEnergy: startEnergy, energyRegen: regen, maxEnergy: 1000, energy: startEnergy
+    };
+  }
   // 构建我方战斗单元
   function buildPlayerUnit(state, iid) {
     const st = unitStats(state, iid);
@@ -736,7 +749,8 @@
         elementDmg: st.elementDmg || 0, ctrlAcc: st.ctrlAcc || 0, silImmune: !!st.silImmune,
         race: state.race,
         skills: state.skills.map(id => skillById(id)).filter(Boolean),
-        place: state.formation ? 'front' : 'front'
+        place: state.formation ? 'front' : 'front',
+        ...cstats(st.spd, st.def, st.crit, st.ctrlAcc, 300, 110)
       };
     }
     const p = state.partners.find(x => x.iid === iid);
@@ -746,6 +760,7 @@
       maxHp: st.hp, hp: st.hp, atk: st.atk, def: st.def, spd: st.spd,
       crit: st.crit, critDmg: st.critDmg || 0, heal: st.heal || 0,
       elementDmg: st.elementDmg || 0, ctrlAcc: st.ctrlAcc || 0, silImmune: false,
+      ...cstats(st.spd, st.def, st.crit, st.ctrlAcc, 200, 95),
       skills: partnerSkills(tpl)
     };
   }
@@ -764,6 +779,7 @@
       maxHp: e.hp, hp: e.hp, atk: e.atk, def: e.def, spd: e.spd,
       crit: e.crit || 0.05, critDmg: e.critDmg || 0, heal: 0, elementDmg: 0,
       ctrlAcc: 0, silImmune: !!e.silImmune,
+      ...cstats(e.spd, e.def, e.crit || 0.05, 0, 150, 80),
       skills: e.skills || [skillById('basic')]
     };
   }
@@ -836,15 +852,20 @@
     let round = 0, winner = null;
     const all = playerUnits.concat(enemyUnits);
     // 每回合重置状态计时
-    all.forEach(u => { u.cds = u.skills.map(() => 0); u.status = { stun: 0, freeze: 0, silence: 0, burn: 0, poison: 0, regen: 0, taunt: 0, atkBuff: 0, defBuff: 0, hpBuff: 0 }; });
+    all.forEach(u => { u.cds = u.skills.map(() => 0); u.energy = u.startEnergy || 0; u.status = { stun: 0, freeze: 0, silence: 0, burn: 0, poison: 0, regen: 0, taunt: 0, atkBuff: 0, defBuff: 0, hpBuff: 0 }; });
     const alive = (side) => all.filter(u => u.team === side && u.hp > 0);
 
     const order = [...all].sort((a, b) => b.spd - a.spd || Math.random() - 0.5);
     // 银弹：给单位起手一个能量用 cd 控制：cd>0 代表技能冷却
-    function pickSkill(u) {
+    function exclusiveOf(u) {
+      let x = null, mx = -1;
+      u.skills.forEach((sk, idx) => { if (sk && (sk.cd || 0) > mx) { mx = sk.cd; x = { sk, idx }; } });
+      return (x && (x.sk.cd || 0) > 1) ? x : null;
+    }
+    function pickSkill(u, exclIdx) {
       let best = null;
       u.skills.forEach((sk, idx) => {
-        if (sk && u.cds[idx] <= 0) {
+        if (sk && idx !== exclIdx && u.cds[idx] <= 0) {
           if (!best || (sk.cd || 0) > (best.sk.cd || 0)) best = { sk, idx };
         }
       });
@@ -874,28 +895,46 @@
       return pickFoe(u, foes);
     }
 
-    function dealDamage(att, def, mult) {
+    function dealDamage(att, def, mult, isSkill, dmgType) {
+      // 命中 vs 闪避
+      const hitChance = Math.max(5, Math.min(100, (att.hit || 100) - (def.dodge || 0)));
+      if (Math.random() * 100 > hitChance) return { dmg: 0, crit: false, em: 1, miss: true, blocked: false };
       let base = att.atk * (mult || 1);
       let dmg = base * (100 / (100 + Math.max(0, def.def)));
       const em = elemMult(att.element, def.element);
       dmg *= em;
       if (em > 1) dmg *= 1 + (att.elementDmg || 0) / 100;
-      // 暴击
-      const crit = Math.random() < (att.crit || 0.05);
+      // 伤害加深 vs 伤害减免
+      dmg *= (1 + ((att.dmgBoost || 0) - (def.dmgReduce || 0)) / 100);
+      // 技能加成 vs 技能抗性
+      if (isSkill) dmg *= (1 + ((att.skillBonus || 0) - (def.skillRes || 0)) / 100);
+      // 暴击 vs 抗暴
+      const critChance = Math.max(0, Math.min(1, (att.crit || 0.05) - (def.critRes || 0)));
+      const crit = Math.random() < critChance;
       if (crit) dmg *= (1.5 + (att.critDmg || 0));
       // 冻结增伤
       if (def.status.freeze > 0) dmg *= 1.3;
       // buff
       if (att.status.atkBuff > 0) dmg *= 1 + att.status.atkBuff / 100;
       if (def.status.defBuff > 0) dmg *= 1 - def.status.defBuff / 300;
+      // 物理/法术格挡（防御方更高则 30% 概率格挡，每高1点抵挡0.1%）
+      const phys = dmgType !== 'magic';
+      let blocked = false;
+      if (phys) {
+        if ((def.physBlock || 0) > (att.physBlock || 0) && Math.random() < 0.30) { dmg *= (1 - Math.min(100, ((def.physBlock || 0) - (att.physBlock || 0)) * 0.1) / 100); blocked = true; }
+      } else {
+        if ((def.magicBlock || 0) > (att.magicBlock || 0) && Math.random() < 0.30) { dmg *= (1 - Math.min(100, ((def.magicBlock || 0) - (att.magicBlock || 0)) * 0.1) / 100); blocked = true; }
+      }
       dmg = Math.max(1, Math.round(dmg));
       def.hp = Math.max(0, def.hp - dmg);
-      return { dmg, crit, em };
+      return { dmg, crit, em, miss: false, blocked };
     }
 
-    function applyStatus(def, eff, chance, dur, isHeroDmg) {
+    function applyStatus(att, def, eff, chance, dur, isHeroDmg) {
       if (!eff || !chance) return false;
       let c = chance;
+      // 控制加成 vs 控制抗性
+      c *= (1 + ((att.ctrlBoost || 0) - (def.ctrlRes || 0)));
       if (def.silImmune && eff === 'silence') c = 0;
       // 目标免控系数：boss 略抗控
       if (def.boss) c *= 0.6;
@@ -917,34 +956,43 @@
         }
         if (u.status.freeze > 0) {
           const tmp = u.status.freeze; u.status.freeze = 0;
-          const r = dealDamage(u, u, 1.1);
+          const r = dealDamage(u, u, 1.1, false, 'magic');
           push(u.name + ' 被冻结，冰封侵蚀，损失 ' + r.dmg + ' 生命！', 'freeze');
           u.status.freeze = tmp - 1;
           continue;
         }
         // 行动
-          let acted = false;
-        let sel = pickSkill(u);
-        // 沉默只能用普攻
-        if (u.status.silence > 0) sel = null;
+        let acted = false;
+        // 能量：每回合恢复能量，满 1000 释放专属技（消耗全部能量）
+        u.energy = Math.min(u.maxEnergy || 1000, (u.energy || 0) + (u.energyRegen || 0));
+        let sel = null;
+        const excl = exclusiveOf(u);
+        if (u.status.silence <= 0 && excl && u.energy >= (u.maxEnergy || 1000)) {
+          sel = excl; u.energy = 0;
+        } else {
+          sel = pickSkill(u, excl ? excl.idx : -1);
+          if (u.status.silence > 0) sel = null; // 沉默只能用普攻
+        }
         if (sel) {
           const sk = sel.sk;
           u.cds[sel.idx] = (sk.cd || 0) + 1;
           const targets = targetOf(u, sk);
           if (sk.type === 'dmg') {
             if (targets && targets.length) {
-              const total = targets.map(t => dealDamage(u, t, sk.mult));
+              const total = targets.map(t => dealDamage(u, t, sk.mult, true, sk.dmgType));
               const dT = sk.dmgType === 'physical' ? '物理' : sk.dmgType === 'magic' ? '法术' : '';
               const pr = (sk.chance != null) ? sk.chance : (sk.stun || sk.freeze || sk.silence);
               targets.forEach((t, i) => {
-                if (sk.stun) applyStatus(t, 'stun', sk.stun, sk.dur || 1);
-                if (sk.freeze) applyStatus(t, 'freeze', sk.freeze, sk.dur || 1);
-                if (sk.silence) applyStatus(t, 'silence', sk.silence, sk.dur || 1);
+                if (sk.stun) applyStatus(u, t, 'stun', sk.stun, sk.dur || 1);
+                if (sk.freeze) applyStatus(u, t, 'freeze', sk.freeze, sk.dur || 1);
+                if (sk.silence) applyStatus(u, t, 'silence', sk.silence, sk.dur || 1);
                 if (sk.burn) { t.status.burn = Math.max(t.status.burn, sk.dur || 2); }
-                if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
+                if (total[i].miss) push(u.name + ' 施展『' + sk.name + '』攻击 ' + t.name + '，被闪避了！', 'dmg');
+                else if (total[i].blocked) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害（被格挡）！', 'dmg');
+                else if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
                 else push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害' + (total[i].em > 1 ? '（五行克制）' : '') + '！', 'dmg');
               });
-              events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: sk.name, targets: targets.map((t, i) => ({ team: t.team, idx: t.sideIdx, dmg: total[i].dmg, crit: total[i].crit })) });
+              events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: sk.name, energy: Math.round(u.energy), targets: targets.map((t, i) => ({ team: t.team, idx: t.sideIdx, dmg: total[i].dmg, crit: total[i].crit, miss: total[i].miss, blocked: total[i].blocked })) });
               if (sk.selfBuff) { const selfKey = sk.selfBuff === 'def' ? 'defBuff' : sk.selfBuff === 'atk' ? 'atkBuff' : 'hpBuff'; u.status[selfKey] = Math.max(u.status[selfKey] || 0, sk.pct || 0); push(u.name + ' 施展『' + sk.name + '』后自身' + (sk.selfBuff === 'atk' ? '攻击' : '防御') + '提升' + (sk.pct || 0) + '%！', 'buff'); }
               if (sk.selfTaunt) { u.status.taunt = Math.max(u.status.taunt || 0, sk.selfTaunt); push(u.name + ' 施展『' + sk.name + '』，嘲讽敌人攻击自己！', 'buff'); }
               if (sk.lifesteal && targets.length) {
@@ -967,7 +1015,7 @@
               amt += v;
               amounts.push({ team: t.team, idx: t.sideIdx, amount: Math.round(v) });
             });
-            events.push({ type: 'heal', team: u.team, idx: u.sideIdx, sk: sk.name, targets: amounts });
+            events.push({ type: 'heal', team: u.team, idx: u.sideIdx, sk: sk.name, energy: Math.round(u.energy), targets: amounts });
             if (sk.clear) healTargets.forEach(t => { t.status.stun = 0; t.status.freeze = 0; t.status.silence = 0; t.status.burn = 0; });
             if (sk.buffAtk) healTargets.forEach(t => { t.status.atkBuff = Math.max(t.status.atkBuff || 0, sk.buffAtk); });
             if (sk.revive) all.filter(x => x.team === u.team && x.hp <= 0).forEach(t => { t.hp = Math.round(t.maxHp * sk.revive); push(t.name + ' 被复活！', 'heal'); });
@@ -979,7 +1027,7 @@
             let bufKey = sk.buff === 'def' ? 'defBuff' : sk.buff === 'atk' ? 'atkBuff' : 'hpBuff';
             buffed.forEach(t => { t.status[bufKey] = Math.max(t.status[bufKey] || 0, sk.pct || 0); });
             push(u.name + ' 施展『' + sk.name + '』，' + (sk.buff === 'def' ? '提升防御' : sk.buff === 'atk' ? '提升攻击' : '提升生命') + '！', 'buff');
-            events.push({ type: 'buff', team: u.team, idx: u.sideIdx, sk: sk.name });
+            events.push({ type: 'buff', team: u.team, idx: u.sideIdx, sk: sk.name, energy: Math.round(u.energy) });
             acted = true;
           }
         }
@@ -988,9 +1036,10 @@
           const foes = alive(u.team === 'ally' ? 'enemy' : 'ally');
           if (!foes.length) continue;
           const t = pickFoe(u, foes)[0];
-          const r = dealDamage(u, t, 1.0);
-          push(u.name + ' 攻击 ' + t.name + (r.crit ? '，暴击' : '') + '，造成 ' + r.dmg + ' 伤害！', r.crit ? 'crit' : 'dmg');
-          events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: '普攻', targets: [{ team: t.team, idx: t.sideIdx, dmg: r.dmg, crit: r.crit }] });
+          const r = dealDamage(u, t, 1.0, false, 'physical');
+          if (r.miss) push(u.name + ' 攻击 ' + t.name + '，被闪避了！', 'dmg');
+          else push(u.name + ' 普通攻击 ' + t.name + (r.blocked ? '（被格挡）' : '') + (r.crit ? '，暴击' : '') + '，造成 ' + r.dmg + ' 伤害！', r.crit ? 'crit' : 'dmg');
+          events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: '普攻', energy: Math.round(u.energy), targets: [{ team: t.team, idx: t.sideIdx, dmg: r.dmg, crit: r.crit, miss: r.miss, blocked: r.blocked }] });
         }
       }
       // 回合末：burn/poison/regen
