@@ -1,201 +1,210 @@
 # -*- coding: utf-8 -*-
 """
-菜鸡修仙传 国风 BGM 合成脚本
-风格：清雅悠远的仙镇氛围（近似问道·揽仙镇）—— 古筝式拨奏 + 温暖弦乐pad + 稀疏风铃 + 空间混响。
-输出：bgm.wav (44.1kHz, 16bit, 单声道, 无缝循环)
+菜鸡修仙传 国风 BGM v2
+意境：仙界宁静悠远，源远流长。主奏：笛子 + 古筝；辅助：沙锤 + 鼓。
+结构起伏：静(起) → 渐渐激荡(峰) → 复归平缓(收)，循环无缝。
+输出：bgm.wav (22.05kHz, 16bit, 单声道)
 """
 import numpy as np
 import wave
 
-SR = 44100
+SR = 22050
 rng = np.random.default_rng(20260822)
 
-def freq(note):
-    # note 形如 ('D',4) 或 ('F#',4)；用 A4=440
-    names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
-    idx = names.index(note[0])
-    midi = (note[1] + 1) * 12 + idx
-    return 440.0 * (2 ** ((midi - 69) / 12))
+def lowpass(x, k, sr=SR):
+    w = max(1, int(k * sr))
+    return np.convolve(x, np.ones(w) / w, mode='same')
 
-def env(n, sr, a=0.004, dec=1.4, sus=0.0):
+def highpass(x, sr=SR):
+    return x - lowpass(x, 0.0018, sr)
+
+def env(n, sr, a=0.02, dec=1.4):
     t = np.arange(n) / sr
-    # 快速起音 + 指数衰减
-    att = np.clip(t / a, 0, 1)
-    dec_env = np.exp(-t * (1.0 / dec))
-    return att * dec_env
+    return np.clip(t / a, 0, 1) * np.exp(-t / dec)
 
-def pluck(f, dur, sr=SR, bright=0.5, decay=1.4):
+# ---------- 笛子 ----------
+def flute(f, dur, vol=1.0, vibrato=0.004, sr=SR):
     n = int(dur * sr)
     t = np.arange(n) / sr
-    amps = np.array([1.0, 0.5, 0.26, 0.15, 0.085])
+    vr = np.clip((t - 0.35) / 0.6, 0, 1) * vibrato
+    f_inst = f * (1 + vr * np.sin(2 * np.pi * 5.2 * t))
+    ph = np.cumsum(2 * np.pi * f_inst / sr)
+    tone = np.sin(ph) + 0.22 * np.sin(2 * ph) + 0.06 * np.sin(3 * ph)
+    air = highpass(rng.normal(0, 1, n)) * 0.5
+    a = np.clip(t / 0.06, 0, 1)
+    r = np.clip((dur - t) / 0.5, 0, 1)
+    e = a * r
+    out = tone * e + air * e * 0.05
+    breath = highpass(rng.normal(0, 1, n)) * np.exp(-t / 0.018)
+    out += breath * 0.07
+    m = np.max(np.abs(out)) + 1e-9
+    return out / m * vol
+
+# ---------- 古筝 ----------
+def guzheng(f, dur, bright=0.45, decay=1.7, vol=1.0, sr=SR):
+    n = int(dur * sr)
+    t = np.arange(n) / sr
+    amps = np.array([1.0, 0.48, 0.26, 0.14, 0.08])
     out = np.zeros(n)
     for k in range(1, 6):
-        fh = f * k * (1 + 0.0012 * k * k)
-        dk = decay / (1 + 0.35 * k)          # 高次谐波衰减更快
-        out += amps[k - 1] * np.sin(2 * np.pi * fh * t) * np.exp(-t / dk)
-    # 琴弦起音“拨”的瞬态
-    click = rng.normal(0, 1, min(n, int(0.012 * sr)))
-    out[:len(click)] += 0.35 * click * np.exp(-np.arange(len(click)) / (0.002 * sr))
-    e = env(n, sr, 0.004, decay)
-    out *= e
-    m = np.max(np.abs(out))
-    return out / (m + 1e-9) if m > 0 else out
+        fh = f * k * (1 + 0.0008 * k * k)
+        dk = decay / (1 + 0.3 * k)
+        out += amps[k-1] * np.sin(2*np.pi*fh*t) * np.exp(-t / dk)
+    click = rng.normal(0, 1, min(n, int(0.010 * sr)))
+    out[:len(click)] += 0.18 * click * np.exp(-np.arange(len(click)) / (0.0016 * sr))
+    out *= env(n, sr, 0.004, decay)
+    m = np.max(np.abs(out)) + 1e-9
+    return out / m * vol
 
-def pad(f, dur, sr=SR, lfo=0.18):
+# ---------- 沙锤 ----------
+def shaker(dur, vol=1.0, sr=SR):
     n = int(dur * sr)
     t = np.arange(n) / sr
-    # 轻微合唱 + 基频 + 八度
-    w = (0.9 * np.sin(2 * np.pi * f * t)
-         + 0.35 * np.sin(2 * np.pi * f * 1.006 * t)
-         + 0.30 * np.sin(2 * np.pi * f * 0.994 * t)
-         + 0.18 * np.sin(2 * np.pi * f * 2 * t)
-         + 0.12 * np.sin(2 * np.pi * f * 2.005 * t))
-    a = np.clip(t / 0.9, 0, 1)
-    r = np.clip((dur - t) / 1.0, 0, 1)
-    breath = 1 + lfo * 0.5 * np.sin(2 * np.pi * t / 6.5)
+    noise = highpass(rng.normal(0, 1, n)) * (0.6 + 0.4 * np.exp(-t / 0.05))
+    e = np.exp(-t / 0.055) * np.clip(t / 0.002, 0, 1)
+    g = np.zeros(n)
+    for off in [0.0, 0.022]:
+        i0 = int(off * sr)
+        if i0 < n:
+            seg_n = min(n - i0, int(0.05 * sr))
+            g[i0:i0+seg_n] += np.exp(-np.arange(seg_n) / (0.018 * sr))
+    out = noise * e * (0.6 + 0.4 * g)
+    m = np.max(np.abs(out)) + 1e-9
+    return out / m * vol
+
+# ---------- 鼓 ----------
+def drum(f=150, dur=0.9, vol=1.0, sr=SR):
+    n = int(dur * sr)
+    t = np.arange(n) / sr
+    f_inst = f * (0.55 + 0.45 * np.exp(-t / 0.12))
+    ph = np.cumsum(2 * np.pi * f_inst / sr)
+    body = np.sin(ph) * np.exp(-t / 0.45)
+    click = highpass(rng.normal(0, 1, n)) * np.exp(-t / 0.006)
+    out = 0.85 * body + 0.12 * click
+    m = np.max(np.abs(out)) + 1e-9
+    return out / m * vol
+
+# ---------- 氛围铺底 ----------
+def pad(f, dur, vol=1.0, lfo=0.2, sr=SR):
+    n = int(dur * sr)
+    t = np.arange(n) / sr
+    w = (0.9*np.sin(2*np.pi*f*t) + 0.3*np.sin(2*np.pi*f*1.004*t)
+         + 0.22*np.sin(2*np.pi*f*0.996*t) + 0.14*np.sin(2*np.pi*f*2*t))
+    a = np.clip(t / 1.4, 0, 1)
+    r = np.clip((dur - t) / 1.2, 0, 1)
+    breath = 1 + lfo * np.sin(2*np.pi*t/7.5)
     out = w * a * r * breath
-    m = np.max(np.abs(out))
-    return out / (m + 1e-9) if m > 0 else out
-
-def bell(f, dur, sr=SR):
-    n = int(dur * sr)
-    t = np.arange(n) / sr
-    # 钟/铃：非谐泛音，衰减
-    w = (0.7 * np.sin(2*np.pi*f*t)
-         + 0.28 * np.sin(2*np.pi*f*2.67*t + 0.1)
-         + 0.12 * np.sin(2*np.pi*f*5.33*t + 0.3))
-    out = w * np.exp(-t / 1.1) * np.clip(t / 0.002, 0, 1)
-    m = np.max(np.abs(out))
-    return out / (m + 1e-9) if m > 0 else out
-
-def shimmer(dur, sr=SR):
-    n = int(dur * sr)
-    noise = rng.normal(0, 1, n)
-    # 简易低通（滑动平均）
-    w = int(0.0016 * sr)
-    k = np.ones(w) / w
-    noise = np.convolve(noise, k, mode='same')
-    # 缓慢起伏
-    t = np.arange(n) / sr
-    noise *= (0.5 + 0.5 * np.sin(2*np.pi*t/9.5 + 0.6))
-    m = np.max(np.abs(noise)) + 1e-9
-    return noise / m
+    m = np.max(np.abs(out)) + 1e-9
+    return out / m * vol
 
 def add(buf, start, sample):
     n = len(sample)
     end = min(start + n, len(buf))
     if start < len(buf) and end > start:
-        buf[start:end] += sample[:end - start]
+        buf[start:end] += sample[:end-start]
 
-def make_ir(sr=SR, dur=1.6):
+def make_ir(sr=SR, dur=1.7):
     n = int(dur * sr)
     t = np.arange(n) / sr
-    ir = rng.normal(0, 1, n) * np.exp(-t * 4.2)
-    # 低通软化
-    w = int(0.001 * sr)
-    ir = np.convolve(ir, np.ones(w)/w, mode='same')
-    # 早期反射几个小尖峰
-    for d in [0.021, 0.057, 0.093, 0.121]:
+    ir = rng.normal(0, 1, n) * np.exp(-t * 3.8)
+    ir = lowpass(ir, 0.001, sr)
+    for d in [0.018, 0.052, 0.088, 0.12]:
         i = int(d * sr)
-        if i < n: ir[i] += (rng.normal(0, 1) * 0.4) * np.exp(-t[i] * 3)
+        if i < n: ir[i] += rng.normal(0, 1) * 0.35 * np.exp(-t[i]*3)
     m = np.max(np.abs(ir)) + 1e-9
     return ir / m
 
 def fftconv(x, h):
-    # 用 FFT 做线性卷积
     n = len(x) + len(h) - 1
     nfft = 1 << (n - 1).bit_length()
-    X = np.fft.rfft(x, nfft)
-    H = np.fft.rfft(h, nfft)
-    y = np.fft.irfft(X * H, nfft)[:n]
-    return y
+    return np.fft.irfft(np.fft.rfft(x, nfft) * np.fft.rfft(h, nfft), nfft)[:n]
 
 # ---------- 乐谱 ----------
-# D 宫五声：D E F# A B
-TONES = {
-    'D': ['D4','F#4','A4'],
-    'Bm': ['B3','D4','F#4','A4'],
-    'G': ['G3','B3','D4','G4'],
-    'A': ['A3','C#4','E4','A4']
-}
-CHORDS = ['D','Bm','G','A'] * 2  # 8 小节
-BAR = 4 * (60 / 62.0)           # 62 BPM，4/4
-TOTAL = BAR * len(CHORDS) + 1.6 # 预留混响尾
-
+BAR = 4 * (60 / 58.0)
+BARS = 12
+TOTAL = BAR * BARS + 1.8
 buf = np.zeros(int(TOTAL * SR))
 
-for i, ch in enumerate(CHORDS):
+CHORD = {
+    'D':  [146.83, 220.00, 293.66, 369.99],
+    'G':  [196.00, 293.66, 392.00, 493.88],
+    'A':  [220.00, 277.18, 329.63, 440.00],
+    'Bm': [246.94, 293.66, 369.99, 493.88],
+}
+PROG = ['D','G','A','Bm','G','A','D','A','Bm','G','A','D']
+INTEN = [0.55, 0.6, 0.68, 0.6, 0.72, 0.9, 1.0, 0.82, 0.68, 0.6, 0.66, 0.55]
+
+MELODY = [
+    (0, 0.0, 440.00, 2.0), (0, 2.0, 493.88, 2.0),
+    (1, 0.0, 587.33, 3.0), (1, 3.0, 493.88, 1.0),
+    (2, 0.0, 440.00, 1.5), (2, 1.5, 369.99, 1.5), (2, 3.0, 440.00, 1.0),
+    (3, 0.0, 329.63, 2.0), (3, 2.0, 369.99, 2.0),
+    (4, 0.0, 493.88, 1.0), (4, 1.0, 587.33, 1.0), (4, 2.0, 659.25, 2.0),
+    (5, 0.0, 739.99, 1.0), (5, 1.0, 659.25, 1.0), (5, 2.0, 587.33, 2.0),
+    (6, 0.0, 659.25, 0.5), (6, 0.5, 739.99, 0.5), (6, 1.0, 880.00, 1.5), (6, 2.5, 739.99, 1.5),
+    (7, 0.0, 659.25, 1.0), (7, 1.0, 587.33, 1.0), (7, 2.0, 493.88, 2.0),
+    (8, 0.0, 587.33, 2.0), (8, 2.0, 493.88, 2.0),
+    (9, 0.0, 440.00, 3.0), (9, 3.0, 369.99, 1.0),
+    (10, 0.0, 440.00, 1.5), (10, 1.5, 369.99, 1.5), (10, 3.0, 440.00, 1.0),
+    (11, 0.0, 493.88, 2.0), (11, 2.0, 587.33, 2.0),
+]
+
+for i, ch in enumerate(PROG):
     t0 = i * BAR
-    # 解析 tone 名字
-    def parse(s):
-        import re
-        m = re.match(r"([A-G]#?)(\d)", s)
-        return (m.group(1), int(m.group(2)))
-    chord_freqs = [freq(parse(tn)) for tn in TONES[ch]]
+    inten = INTEN[i]
+    tones = CHORD[ch]
 
-    # 1) pad：整小节铺底
-    padmix = np.zeros(int((BAR + 0.3) * SR))
-    for cf in chord_freqs:
-        p = pad(cf, BAR + 0.3, lfo=0.18)
-        padmix += p * (0.8 if cf > 200 else 0.95)
-    add(buf, int(t0 * SR), padmix * 0.16)
+    root, fifth = tones[0], tones[1]
+    add(buf, int(t0*SR), pad(root, BAR+0.4, vol=0.08*inten))
+    add(buf, int(t0*SR), pad(fifth, BAR+0.4, vol=0.05*inten))
 
-    # 2) 竖琴式琶音（每拍两音 = 8 分音符）
-    arp_tones = [];
-    # 构建琶音序列
-    seq = [chord_freqs[i % len(chord_freqs)] for i in range(0, 8)]
-    # 让它更有线条：根、五、三、八、三、五
-    oct_f = chord_freqs[0] * 2
-    seq = [chord_freqs[0], chord_freqs[2 % len(chord_freqs)], chord_freqs[1 % len(chord_freqs)], oct_f,
-           chord_freqs[2 % len(chord_freqs)], chord_freqs[1 % len(chord_freqs)], oct_f, chord_freqs[0]]
-    for e in range(8):
-        at = t0 + e * (BAR / 8)
-        p = pluck(seq[e], 1.5, bright=0.55, decay=1.3)
-        add(buf, int(at * SR), p * 0.11)
+    step = BAR/8 if inten > 0.7 else BAR/4
+    arp_seq = [tones[0], tones[2 % len(tones)], tones[1], tones[3 % len(tones)]]
+    seqlen = int(round(BAR/step))
+    patt = [arp_seq[j % len(arp_seq)] for j in range(seqlen)]
+    for e, f in enumerate(patt):
+        at = t0 + e * step
+        b = guzheng(f * (2 if e % 2 == 1 else 1), 1.4, bright=0.4+0.25*inten, decay=1.5, vol=0.10*inten)
+        add(buf, int(at*SR), b)
 
-    # 3) 风铃（每一小节开头一个高音钟）
-    top = seq[3] * 2
-    b = bell(top, 1.6)
-    add(buf, int((t0 + 0.02) * SR), b * 0.055)
+    if inten > 0.68:
+        for e in range(8):
+            at = t0 + e * (BAR/8)
+            add(buf, int(at*SR), shaker(0.12, vol=0.04*inten))
+    elif i % 2 == 0:
+        for e in [2, 6]:
+            at = t0 + e * (BAR/8)
+            add(buf, int(at*SR), shaker(0.12, vol=0.02))
 
-# 4) 加一点 guqin 长音点缀（第2遍更高，避免单调）
-mels = [('D',5),('B',4),('A',4),('G',4),('F#',4),('E',4),('D',5),('A',4)]
-for j, note in enumerate(mels):
-    at = (j % 8) * BAR + (0.4)
-    f = freq(note)
-    if j >= 4: f *= 2  # 第二遍翻高八度
-    p = pluck(f, 2.0, bright=0.35, decay=1.8)
-    add(buf, int(at * SR), p * 0.10)
+    if inten > 0.8:
+        for b0 in [0, 2]:
+            add(buf, int((t0+b0*BAR/4)*SR), drum(150, 0.8, vol=0.11*inten))
+    elif inten > 0.68 and i % 2 == 1:
+        add(buf, int(t0*SR), drum(120, 0.7, vol=0.06))
 
-# 5) 微风/水声氛围
-sh = shimmer(TOTAL, SR)
-add(buf, 0, sh * 0.03)
+for (bar, beat, f, dur) in MELODY:
+    at = bar * BAR + beat
+    inten = INTEN[bar]
+    fp = flute(f, dur, vol=0.5 + 0.25*inten, vibrato=0.004 + 0.002*inten)
+    add(buf, int(at*SR), fp)
 
-# ---------- 混响 ----------
-ir = make_ir(SR, 1.6)
+ir = make_ir(SR, 1.7)
 wet = fftconv(buf, ir)
 wet = wet / (np.max(np.abs(wet)) + 1e-9)
-mix = buf * 0.66 + wet[:len(buf)] * 0.5
+mix = buf * 0.64 + wet[:len(buf)] * 0.5
 
-# ---------- 无缝循环：把“混响尾”折叠进开头（样点级连续） ----------
-M = int(len(CHORDS) * BAR * SR)   # 循环主体长度
-K = int(1.2 * SR)                 # 折叠/交叉长度
+M = int(BARS * BAR * SR)
+K = int(1.4 * SR)
 clip = mix[:M + K]
 loop_buf = np.empty(M)
 i = np.arange(K)
 loop_buf[:K] = clip[:K] * (i / K) + clip[M:M + K] * (1 - i / K)
 loop_buf[K:] = clip[K:M]
+loop_buf /= (np.max(np.abs(loop_buf)) + 1e-9)
+loop_buf *= 0.85
 
-peak = np.max(np.abs(loop_buf)) + 1e-9
-loop_buf = loop_buf / peak * 0.88
-
-# ---------- 写 WAV ----------
 out = (loop_buf * 32767).astype(np.int16)
 with wave.open('bgm.wav', 'w') as wf:
-    wf.setnchannels(1)
-    wf.setsampwidth(2)
-    wf.setframerate(SR)
+    wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(SR)
     wf.writeframes(out.tobytes())
-
-print("bgm.wav 长度 %.2f秒, %d samples, %.2f MB" % (
-    len(loop_buf)/SR, len(loop_buf), len(out.tobytes())/1e6))
+print("bgm.wav  %.2f 秒  %.2f MB" % (len(loop_buf)/SR, len(out.tobytes())/1e6))
