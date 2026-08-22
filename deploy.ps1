@@ -30,7 +30,8 @@ git remote add origin "https://${User}:${Token}@github.com/${User}/${Repo}.git"
 git add -A
 git -c user.name="$User" -c user.email="codex@users.noreply.github.com" commit -q -m "菜鸡修仙传 v1" 2>$null
 git branch -M $Branch
-git -c http.extraheader="AUTHORIZATION: basic" push -qf --set-upstream origin $Branch 2>&1 | Out-Null
+git -c http.extraheader="AUTHORIZATION: basic" push -qf --force --set-upstream origin $Branch
+if ($LASTEXITCODE -ne 0) { Write-Host "推送失败，请检查 token 权限" -ForegroundColor Red; exit 1 }
 Write-Host "代码已推送" -ForegroundColor Green
 
 # 3) 开启 GitHub Pages
