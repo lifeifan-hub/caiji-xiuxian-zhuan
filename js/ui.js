@@ -55,6 +55,20 @@
     updateMusicBtn();
   }
 
+  // 回到选种族起始界面（重置后使用）
+  function goToStart() {
+    S.game = null;
+    S.logMain = [];
+    S.logDungeon = [];
+    S.race = null;
+    $('#game').classList.add('hide');
+    $('#start').classList.remove('hide');
+    $('#btn-start').disabled = true;
+    $('#start-err').textContent = '';
+    renderStart();
+    updateMusicBtn();
+  }
+
   // ---------- 背景音乐 ----------
   function isMuted() { try { return localStorage.getItem('caiji_muted') === '1'; } catch (e) { return false; } }
   function setMuted(m) { try { localStorage.setItem('caiji_muted', m ? '1' : '0'); } catch (e) {} }
@@ -561,7 +575,7 @@
     'shop': function (a) { S.shop = a; render(); },
     'export': function () { const s = C.exportSave(S.game); if (navigator.clipboard) navigator.clipboard.writeText(s); toast('存档已复制'); },
     'import': function () { const txt = prompt('粘贴存档字符串'); if (txt) { const im = C.importSave(txt); if (im) { C.wipe(); localStorage.setItem('caiji_xiuxian_save_v1', JSON.stringify(im)); location.reload(); } else toast('存档无效'); } },
-    'reset': function () { if (confirm('确定重置全部进度？无法恢复！')) { C.wipe(); location.reload(); } }
+    'reset': function () { if (confirm('确定要重置全部进度，并重新选择种族吗？')) { C.wipe(); goToStart(); toast('已重置，请重新选择种族开始'); } }
   };
 
   // 事件委托
