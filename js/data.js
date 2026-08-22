@@ -244,13 +244,8 @@
     '强化石': { name: '强化石', desc: '装备强化材料' },
     '精炼石': { name: '精炼石', desc: '装备精炼材料' },
     '附魔石': { name: '附魔石', desc: '装备附魔材料' },
-    '五行石': { name: '五行石', desc: '提升五行本源，得克制加成。' },
-    '醒神丹': { name: '醒神丹', desc: '回复30体力。' }
+    '五行石': { name: '五行石', desc: '提升五行本源，得克制加成。' }
   };
-
-  // ---------- 体力 / 副本 ----------
-  const STAMINA_MAX = 100;
-  const STAMINA_REGEN_MIN = 1; // 每 min 回 1
 
   // ---------- 五行山 / 日常副本 ----------
   const WUXING_STAGES = 20;
@@ -270,8 +265,7 @@
         { id: 'juling', item: '聚灵丹', price: 120, qty: 1, limit: 0 },
         { id: 'qianghua', item: '强化石', price: 100, qty: 5, limit: 0 },
         { id: 'jinglian', item: '精炼石', price: 150, qty: 5, limit: 0 },
-        { id: 'fuomo', item: '附魔石', price: 200, qty: 3, limit: 0 },
-        { id: 'xingshen', item: '醒神丹', price: 100, qty: 1, limit: 10 }
+        { id: 'fuomo', item: '附魔石', price: 200, qty: 3, limit: 0 }
       ]
     },
     purple: {
@@ -310,7 +304,7 @@
   CJ.P = {
     ELEMENTS, BEATS, QMAP, ROLES, RACE, REALMS, MAX_REALM,
     ELEM_NAME, PARTNERS, SKILLS, GONGFAS, SLOTS, EQUIP_QUALITY,
-    SLOT_STAT, SETS, FABAO, ITEMS, STAMINA_MAX, STAMINA_REGEN_MIN,
+    SLOT_STAT, SETS, FABAO, ITEMS,
     WUXING_STAGES, DAILY, SHOPS, MANOR
   };
 })();
