@@ -85,6 +85,7 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 #mytitle b { color: var(--gold2); letter-spacing: 2px; font-size: 17px; }
 #realm-tag { font-size: 13px; color: var(--ink-dim); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
 .mt-right { display: flex; gap: 6px; align-items: center; }
+.hdr-name { color: var(--gold2); font-size: 13px; margin-left: 8px; letter-spacing: 1px; }
 #resbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
 .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
 .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
@@ -183,6 +184,12 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot.empty { color: var(--dim); font-size: 11px; display: flex; align-items: center; justify-content: center; background: transparent; border-color: rgba(150,150,150,.15); }
 .slot-hero { border-color: var(--gold); background: rgba(240,199,94,.14); box-shadow: 0 0 8px rgba(240,199,94,.25); }
 .slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
+.slot-lv { font-size: 10px; color: var(--ink-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.slot-hp { width: 86%; height: 6px; background: rgba(0,0,0,.5); border-radius: 999px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
+.slot-hp i { display: block; height: 100%; background: linear-gradient(90deg, #6fd97f, #3fae52); transition: width .15s; }
+.slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
+.slot-hp.low i { background: linear-gradient(90deg, #ffb04a, #e0663f); }
+.slot.dead { opacity: .38; filter: grayscale(.6); }
 .slot { transition: transform .16s ease; position: relative; }
 .slot.lunge-right { transform: translateX(46px); }
 .slot.lunge-left { transform: translateX(-46px); }
