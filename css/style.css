@@ -190,6 +190,10 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
 .slot-hp.low i { background: linear-gradient(90deg, #ffb04a, #e0663f); }
 .slot.dead { opacity: .38; filter: grayscale(.6); }
+.bf-result { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; z-index: 9; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.8); animation: bfpop .5s ease-out; }
+.bf-result.win { color: var(--gold2); }
+.bf-result.lose { color: var(--red); }
+@keyframes bfpop { 0% { transform: translate(-50%,-50%) scale(.5); opacity: 0; } 70% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); } 100% { transform: translate(-50%,-50%) scale(1); } }
 .slot { transition: transform .16s ease; position: relative; }
 .slot.lunge-right { transform: translateX(46px); }
 .slot.lunge-left { transform: translateX(-46px); }
