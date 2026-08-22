@@ -175,12 +175,42 @@
   }
 
   // ---------- 通用渲染入口 ----------
+  // 战斗窗口：在所有底部标签页顶部固定展示
+  function battleWindowHtml() {
+    const g = S.game;
+    if (!g) return '';
+    const stage = g.mainline.stage;
+    const heroEl = g.heroEl;
+    const race = RACE[g.race];
+    const heroNm = g.heroName || race.name + '道友';
+    const heroSt = C.unitStats(g, 'hero');
+    const pu = C.formationUnits(g);
+    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
+      '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
+      '<div class="slot-lv">' + lv + '</div>' +
+      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div></div>';
+    let ph = '';
+    pu.forEach((u, i) => {
+      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false); }
+    });
+    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
+    const enemies = C.enemyForStage(stage);
+    let eh = '';
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss); });
+    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
+    return '<div class="battle-field"><div class="bf-round"><span>' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
+      '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div></div>';
+  }
+
   function render() {
     renderHeader();
     const v = $('#cview');
     v.innerHTML = '';
     const fn = { main: renderMain, manor: renderManor, partner: renderPartner, equip: renderEquip, dungeon: renderDungeon, shop: renderShop, settings: renderSettings }[S.tab];
     if (fn) fn(v);
+    v.insertAdjacentHTML('afterbegin', battleWindowHtml());
   }
 
   // ---------- 主页 / 修仙 ----------
@@ -206,34 +236,7 @@
     const race = RACE[g.race];
     const eleOpt = DATA.ELEMENTS.map(e =>
       '<option value="' + e + '"' + (e === heroEl ? ' selected' : '') + '>' + e + '</option>').join('');
-    // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
-    const heroNm = g.heroName || race.name + '道友';
-    const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
-      '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
-      '<div class="slot-lv">' + lv + '</div>' +
-      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div></div>';
-    let ph = '';
-    pu.forEach((u, i) => {
-      if (u.isHero) { const hps = st ? st.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false); }
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false); }
-    });
-    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
-    const enemies = C.enemyForStage(stage);
-    let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss); });
-    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     v.innerHTML = `
-      <div class="battle-field">
-        <div class="bf-round"><span>${S.battleRounds}/30回合</span></div>
-        <div class="bf-body">
-          <div class="bf-side">${ph}</div>
-          <div class="bf-vs">⚔</div>
-          <div class="bf-side">${eh}</div>
-        </div>
-      </div>
-
       <div class="card">
         <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
         <div class="toolbar">
