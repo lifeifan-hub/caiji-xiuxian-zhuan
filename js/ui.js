@@ -16,7 +16,7 @@
   const ELEMC = { 金: '#f0c75e', 木: '#7fe08a', 水: '#7fb8ff', 火: '#ff8c6b', 土: '#c9a0ff' };
 
   const S = {
-    game: null, tab: 'main', race: null,
+    game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
     logMain: [], logDungeon: [], autoPush: true, battleRounds: 0, animating: false,
     lastPush: 0
@@ -34,17 +34,30 @@
         '<div class="sk"><b class="gold">普通技能·' + r.normal.name + '</b><div class="dim">' + r.normal.text + '</div></div>' +
         '<div class="sk"><b class="red">专属技能·' + r.ultimate.name + '</b><div class="dim">' + r.ultimate.text + '</div></div></div>'
       );
-      card.onclick = () => { S.race = rk; box.querySelectorAll('.race-card').forEach(c => c.classList.remove('sel')); card.classList.add('sel'); $('#btn-start').disabled = false; $('#start-err').textContent = ''; };
+      card.onclick = () => { S.race = rk; box.querySelectorAll('.race-card').forEach(c => c.classList.remove('sel')); card.classList.add('sel'); $('#start-err').textContent = ''; updateStartBtn(); };
       box.appendChild(card);
+    });
+    const ebox = $('#elem-cards');
+    ebox.innerHTML = '';
+    const elemDesc = { 金: '克木', 木: '克土', 水: '克火', 火: '克金', 土: '克水' };
+    DATA.ELEMENTS.forEach(en => {
+      const e = el('<div class="elem-card" data-elem="' + en + '" style="color:' + (ELEMC[en] || '#fff') + '">' + en + '<small>' + (elemDesc[en] || '') + '</small></div>');
+      e.onclick = () => { S.elem = en; ebox.querySelectorAll('.elem-card').forEach(c => c.classList.remove('sel')); e.classList.add('sel'); $('#start-err').textContent = ''; updateStartBtn(); };
+      ebox.appendChild(e);
     });
     $('#btn-start').onclick = () => {
       if (!S.race) { $('#start-err').textContent = '请先选择种族'; return; }
+      if (!S.elem) { $('#start-err').textContent = '请先赋予主角五行'; return; }
       startNewGame(S.race);
     };
+  }
+  function updateStartBtn() {
+    $('#btn-start').disabled = !(S.race && S.elem);
   }
 
   function startNewGame(race) {
     const g = C.newGame(race);
+    g.heroEl = S.elem || '金';
     g.heroName = ($('#hero-name').value || '').trim();
     S.game = g;
     C.save(g);
@@ -66,6 +79,7 @@
     S.logMain = [];
     S.logDungeon = [];
     S.race = null;
+    S.elem = null;
     $('#game').classList.add('hide');
     $('#start').classList.remove('hide');
     $('#btn-start').disabled = true;
@@ -234,8 +248,6 @@
 
     // 角色卡
     const race = RACE[g.race];
-    const eleOpt = DATA.ELEMENTS.map(e =>
-      '<option value="' + e + '"' + (e === heroEl ? ' selected' : '') + '>' + e + '</option>').join('');
     v.innerHTML = `
       <div class="card">
         <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
@@ -258,10 +270,6 @@
           <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
           <div class="stat"><span>等级</span><b>${F(g.hero.level)}</b></div>
           <div class="stat"><span>五行</span><b style="color:${ELEMC[heroEl] || '#fff'}">${heroEl}</b></div>
-        </div>
-        <div class="row mt8">
-          <span class="muted">主角五行属性（克制克彼，策略关键）</span>
-          <select id="hero-el" class="btn btn-sm">${eleOpt}</select>
         </div>
         <div class="row mt8">
           <span class="muted">升级主角</span>
@@ -299,7 +307,6 @@
       </div>
     `;
     renderLog('#battle-log', S.logMain);
-    $('#hero-el').onchange = (e) => { g.heroEl = e.target.value; C.recomputeStats(g); C.save(g); render(); };
   }
 
   function layerPct(g) {
