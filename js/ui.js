@@ -199,20 +199,21 @@
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss) =>
+    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct) =>
       '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
       '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
       '<div class="slot-lv">' + lv + '</div>' +
-      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div></div>';
+      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div>' +
+      '<div class="slot-energy"><i style="width:' + (startPct || 0) + '%"></i></div></div>';
     let ph = '';
     pu.forEach((u, i) => {
-      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false); }
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false); }
+      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false, 20); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage);
     let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss); });
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     return '<div class="battle-field"><div class="bf-round"><span>' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
       '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div></div>';
@@ -592,11 +593,15 @@
       const aSide = ev.team === 'ally' ? 0 : 1;
       const aEl = slotEl(aSide, ev.idx);
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
+      if (aEl && ev.energy !== undefined) {
+        const bar = aEl.querySelector('.slot-energy i');
+        if (bar) bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%';
+      }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
         const tEl = slotEl(tSide, t.idx);
         if (!tEl) return;
-        if (ev.type === 'dmg') { popDamage(tEl, '-' + F(t.dmg), t.crit, false); adjustHp(tEl, -t.dmg); }
+        if (ev.type === 'dmg') { if (t.dmg > 0) { popDamage(tEl, '-' + F(t.dmg), t.crit, false); adjustHp(tEl, -t.dmg); } else if (t.miss) { popDamage(tEl, '闪避', false, false); } }
         else if (ev.type === 'heal') { popDamage(tEl, '+' + F(t.amount), false, true); adjustHp(tEl, t.amount); }
       });
       if (ev.type === 'buff' && aEl) { aEl.classList.add('buff-flash'); setTimeout(() => aEl.classList.remove('buff-flash'), 450); }
