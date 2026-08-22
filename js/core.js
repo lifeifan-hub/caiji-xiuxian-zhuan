@@ -822,6 +822,10 @@
     opts = opts || {};
     const log = [];
     const push = (msg, cls) => { if (cb) cb({ msg, cls }); log.push({ msg, cls }); };
+    const events = [];
+    // 记录站位序号（供前端动画定位）
+    playerUnits.forEach((u, i) => u.sideIdx = i);
+    enemyUnits.forEach((u, i) => u.sideIdx = i);
     let round = 0, winner = null;
     const all = playerUnits.concat(enemyUnits);
     // 每回合重置状态计时
@@ -897,6 +901,7 @@
 
     for (round = 1; round <= (opts.maxRounds || 30); round++) {
       push('—— 第 ' + round + ' 回合 ——', 'bl-turn');
+      events.push({ type: 'round', n: round });
       for (const u of order) {
         if (u.hp <= 0) continue;
         // 控制判定
@@ -932,6 +937,7 @@
                 if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
                 else push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害' + (total[i].em > 1 ? '（五行克制）' : '') + '！', 'dmg');
               });
+              events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: sk.name, targets: targets.map((t, i) => ({ team: t.team, idx: t.sideIdx, dmg: total[i].dmg, crit: total[i].crit })) });
               if (sk.selfBuff) { const selfKey = sk.selfBuff === 'def' ? 'defBuff' : sk.selfBuff === 'atk' ? 'atkBuff' : 'hpBuff'; u.status[selfKey] = Math.max(u.status[selfKey] || 0, sk.pct || 0); push(u.name + ' 施展『' + sk.name + '』后自身' + (sk.selfBuff === 'atk' ? '攻击' : '防御') + '提升' + (sk.pct || 0) + '%！', 'buff'); }
               if (sk.selfTaunt) { u.status.taunt = Math.max(u.status.taunt || 0, sk.selfTaunt); push(u.name + ' 施展『' + sk.name + '』，嘲讽敌人攻击自己！', 'buff'); }
               if (sk.lifesteal && targets.length) {
@@ -946,12 +952,15 @@
               ? all.filter(x => x.team === u.team && x.hp > 0)
               : [ [...alive(u.team)].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] ];
             let amt = 0;
+            const amounts = [];
             healTargets.forEach(t => {
               let v = u.atk * sk.mult * (1 + (u.heal || 0) / 100);
               if (sk.regen) t.status.regen = Math.max(t.status.regen || 0, (sk.regen || 0));
               t.hp = Math.min(t.maxHp, t.hp + v);
               amt += v;
+              amounts.push({ team: t.team, idx: t.sideIdx, amount: Math.round(v) });
             });
+            events.push({ type: 'heal', team: u.team, idx: u.sideIdx, sk: sk.name, targets: amounts });
             if (sk.clear) healTargets.forEach(t => { t.status.stun = 0; t.status.freeze = 0; t.status.silence = 0; t.status.burn = 0; });
             if (sk.buffAtk) healTargets.forEach(t => { t.status.atkBuff = Math.max(t.status.atkBuff || 0, sk.buffAtk); });
             if (sk.revive) all.filter(x => x.team === u.team && x.hp <= 0).forEach(t => { t.hp = Math.round(t.maxHp * sk.revive); push(t.name + ' 被复活！', 'heal'); });
@@ -963,6 +972,7 @@
             let bufKey = sk.buff === 'def' ? 'defBuff' : sk.buff === 'atk' ? 'atkBuff' : 'hpBuff';
             buffed.forEach(t => { t.status[bufKey] = Math.max(t.status[bufKey] || 0, sk.pct || 0); });
             push(u.name + ' 施展『' + sk.name + '』，' + (sk.buff === 'def' ? '提升防御' : sk.buff === 'atk' ? '提升攻击' : '提升生命') + '！', 'buff');
+            events.push({ type: 'buff', team: u.team, idx: u.sideIdx, sk: sk.name });
             acted = true;
           }
         }
@@ -973,6 +983,7 @@
           const t = pickFoe(u, foes)[0];
           const r = dealDamage(u, t, 1.0);
           push(u.name + ' 攻击 ' + t.name + (r.crit ? '，暴击' : '') + '，造成 ' + r.dmg + ' 伤害！', r.crit ? 'crit' : 'dmg');
+          events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: '普攻', targets: [{ team: t.team, idx: t.sideIdx, dmg: r.dmg, crit: r.crit }] });
         }
       }
       // 回合末：burn/poison/regen
@@ -1004,7 +1015,7 @@
       winner = ea >= aa ? 'enemy' : 'ally';
     }
     const timeout = winner !== 'ally' && alive('enemy').length > 0 && alive('ally').length > 0;
-    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout };
+    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout, events };
   }
 
   // ---------- 主线 ----------

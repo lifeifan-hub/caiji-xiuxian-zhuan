@@ -183,6 +183,14 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot.empty { color: var(--dim); font-size: 11px; display: flex; align-items: center; justify-content: center; background: transparent; border-color: rgba(150,150,150,.15); }
 .slot-hero { border-color: var(--gold); background: rgba(240,199,94,.14); box-shadow: 0 0 8px rgba(240,199,94,.25); }
 .slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
+.slot { transition: transform .16s ease; position: relative; }
+.slot.lunge-right { transform: translateX(46px); }
+.slot.lunge-left { transform: translateX(-46px); }
+.slot.buff-flash { box-shadow: 0 0 14px rgba(240,199,94,.65); }
+.dmg-pop { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); font-size: 13px; font-weight: 800; color: #ff8a6b; text-shadow: 0 1px 3px #000; pointer-events: none; animation: dmgUp .9s ease-out forwards; z-index: 6; }
+.dmg-pop.crit { color: var(--gold2); font-size: 18px; text-shadow: 0 0 10px rgba(255,220,120,.95), 0 1px 3px #000; }
+.dmg-pop.heal { color: var(--green); }
+@keyframes dmgUp { 0% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -34px); opacity: 0; } }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
 .sec-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
 .sec-tabs .btn { white-space: nowrap; flex: 0 0 auto; }

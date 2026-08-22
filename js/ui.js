@@ -18,7 +18,7 @@
   const S = {
     game: null, tab: 'main', race: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0,
+    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0, animating: false,
     lastPush: 0
   };
 
@@ -199,18 +199,19 @@
     // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
     const heroNm = g.heroName || race.name + '道友';
     const pu = C.formationUnits(g);
-    const slotHtml = (nm, tag, color, hero, boss) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '"><div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
+    const slotHtml = (side, idx, nm, tag, color, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '">' +
+      '<div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
     let ph = '';
-    pu.forEach(u => {
-      if (u.isHero) ph += slotHtml(heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
+    pu.forEach((u, i) => {
+      if (u.isHero) ph += slotHtml(0, i, heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(0, i, tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
     });
-    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty">空位</div>';
+    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage);
     let eh = '';
-    enemies.forEach(en => { eh += slotHtml(en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
-    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty">空位</div>';
+    enemies.forEach((en, i) => { eh += slotHtml(1, i, en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
+    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     v.innerHTML = `
       <div class="stat-top">
         <span class="st-name"><span class="ico">✧</span>${heroNm}</span>
@@ -231,11 +232,10 @@
       <div class="card">
         <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
         <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
-          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
+          <button class="btn btn-gold" data-act="push">挑战下一层（${stage}）</button>
           <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
         </div>
-        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一关；打不过请升级、养仙府、抽伙伴、渡劫。</div>
+        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一层自动挂机；按速度先后出手，全员出手一次算一回合。</div>
       </div>
 
       <div class="card">
@@ -546,9 +546,50 @@
     if (cb) cb(count);
   }
 
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  function popDamage(slot, text, crit, heal) {
+    const d = document.createElement('div');
+    d.className = 'dmg-pop' + (crit ? ' crit' : '') + (heal ? ' heal' : '');
+    d.textContent = text;
+    slot.appendChild(d);
+    setTimeout(() => d.remove(), 900);
+  }
+  // 战斗动画：按事件回放，站位碰撞 + 伤害/暴击飘字 + 回合计数
+  async function playBattle(events, onDone) {
+    const bf = document.querySelector('.battle-field');
+    if (!bf) { if (onDone) onDone(); return; }
+    S.animating = true;
+    const roundEl = bf.querySelector('.bf-round');
+    const slotEl = (side, idx) => bf.querySelector('[data-side="' + side + '"][data-idx="' + idx + '"]');
+    for (const ev of events) {
+      if (ev.type === 'round') { if (roundEl) roundEl.textContent = ev.n + '/30回合'; await sleep(150); continue; }
+      const aSide = ev.team === 'ally' ? 0 : 1;
+      const aEl = slotEl(aSide, ev.idx);
+      if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
+      (ev.targets || []).forEach(t => {
+        const tSide = t.team === 'ally' ? 0 : 1;
+        const tEl = slotEl(tSide, t.idx);
+        if (!tEl) return;
+        if (ev.type === 'dmg') popDamage(tEl, '-' + F(t.dmg), t.crit, false);
+        else if (ev.type === 'heal') popDamage(tEl, '+' + F(t.amount), false, true);
+      });
+      if (ev.type === 'buff' && aEl) { aEl.classList.add('buff-flash'); setTimeout(() => aEl.classList.remove('buff-flash'), 450); }
+      await sleep(330);
+      if (aEl) aEl.classList.remove('lunge-right', 'lunge-left');
+    }
+    S.animating = false;
+    if (onDone) onDone();
+  }
+
   const act = {
-    'push': function () { runMainline(() => { C.save(S.game); render(); }, 1); },
-    'pushx10': function () { runMainline(() => { C.save(S.game); render(); }, 10); },
+    'push': function () {
+      if (S.animating) return;
+      const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
+      if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
+      else addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，退回第 ' + S.game.mainline.stage + ' 层' : '✘ 第 ' + r.stage + ' 关挑战失败', 'bl-system');
+      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); });
+    },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
     'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
     'layerup': function () { const r = C.breakthroughLayer(S.game); toast(r.msg); if (r.ok) { addLog('main', r.msg, 'bl-system'); C.save(S.game); } render(); },
@@ -641,7 +682,7 @@
     const g = S.game;
     C.tick(g, Date.now());
     // 自动推关
-    if (S.autoPush) {
+    if (S.autoPush && !S.animating) {
       const now = Date.now();
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
@@ -658,7 +699,7 @@
     C.save(g);
     renderHeader();
     // 若在主界面，轻量更新（不整页重绘）
-    if (S.tab === 'main') {
+    if (S.tab === 'main' && !S.animating) {
       tickCounter++;
       if (tickCounter % 20 === 0) renderMain($('#cview'));
     }

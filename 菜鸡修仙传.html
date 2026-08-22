@@ -192,6 +192,14 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot.empty { color: var(--dim); font-size: 11px; display: flex; align-items: center; justify-content: center; background: transparent; border-color: rgba(150,150,150,.15); }
 .slot-hero { border-color: var(--gold); background: rgba(240,199,94,.14); box-shadow: 0 0 8px rgba(240,199,94,.25); }
 .slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
+.slot { transition: transform .16s ease; position: relative; }
+.slot.lunge-right { transform: translateX(46px); }
+.slot.lunge-left { transform: translateX(-46px); }
+.slot.buff-flash { box-shadow: 0 0 14px rgba(240,199,94,.65); }
+.dmg-pop { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); font-size: 13px; font-weight: 800; color: #ff8a6b; text-shadow: 0 1px 3px #000; pointer-events: none; animation: dmgUp .9s ease-out forwards; z-index: 6; }
+.dmg-pop.crit { color: var(--gold2); font-size: 18px; text-shadow: 0 0 10px rgba(255,220,120,.95), 0 1px 3px #000; }
+.dmg-pop.heal { color: var(--green); }
+@keyframes dmgUp { 0% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -34px); opacity: 0; } }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
 .sec-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
 .sec-tabs .btn { white-space: nowrap; flex: 0 0 auto; }
@@ -1382,6 +1390,10 @@ code.num { font-family: Consolas, monospace; }
     opts = opts || {};
     const log = [];
     const push = (msg, cls) => { if (cb) cb({ msg, cls }); log.push({ msg, cls }); };
+    const events = [];
+    // 记录站位序号（供前端动画定位）
+    playerUnits.forEach((u, i) => u.sideIdx = i);
+    enemyUnits.forEach((u, i) => u.sideIdx = i);
     let round = 0, winner = null;
     const all = playerUnits.concat(enemyUnits);
     // 每回合重置状态计时
@@ -1457,6 +1469,7 @@ code.num { font-family: Consolas, monospace; }
 
     for (round = 1; round <= (opts.maxRounds || 30); round++) {
       push('—— 第 ' + round + ' 回合 ——', 'bl-turn');
+      events.push({ type: 'round', n: round });
       for (const u of order) {
         if (u.hp <= 0) continue;
         // 控制判定
@@ -1492,6 +1505,7 @@ code.num { font-family: Consolas, monospace; }
                 if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
                 else push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害' + (total[i].em > 1 ? '（五行克制）' : '') + '！', 'dmg');
               });
+              events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: sk.name, targets: targets.map((t, i) => ({ team: t.team, idx: t.sideIdx, dmg: total[i].dmg, crit: total[i].crit })) });
               if (sk.selfBuff) { const selfKey = sk.selfBuff === 'def' ? 'defBuff' : sk.selfBuff === 'atk' ? 'atkBuff' : 'hpBuff'; u.status[selfKey] = Math.max(u.status[selfKey] || 0, sk.pct || 0); push(u.name + ' 施展『' + sk.name + '』后自身' + (sk.selfBuff === 'atk' ? '攻击' : '防御') + '提升' + (sk.pct || 0) + '%！', 'buff'); }
               if (sk.selfTaunt) { u.status.taunt = Math.max(u.status.taunt || 0, sk.selfTaunt); push(u.name + ' 施展『' + sk.name + '』，嘲讽敌人攻击自己！', 'buff'); }
               if (sk.lifesteal && targets.length) {
@@ -1506,12 +1520,15 @@ code.num { font-family: Consolas, monospace; }
               ? all.filter(x => x.team === u.team && x.hp > 0)
               : [ [...alive(u.team)].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] ];
             let amt = 0;
+            const amounts = [];
             healTargets.forEach(t => {
               let v = u.atk * sk.mult * (1 + (u.heal || 0) / 100);
               if (sk.regen) t.status.regen = Math.max(t.status.regen || 0, (sk.regen || 0));
               t.hp = Math.min(t.maxHp, t.hp + v);
               amt += v;
+              amounts.push({ team: t.team, idx: t.sideIdx, amount: Math.round(v) });
             });
+            events.push({ type: 'heal', team: u.team, idx: u.sideIdx, sk: sk.name, targets: amounts });
             if (sk.clear) healTargets.forEach(t => { t.status.stun = 0; t.status.freeze = 0; t.status.silence = 0; t.status.burn = 0; });
             if (sk.buffAtk) healTargets.forEach(t => { t.status.atkBuff = Math.max(t.status.atkBuff || 0, sk.buffAtk); });
             if (sk.revive) all.filter(x => x.team === u.team && x.hp <= 0).forEach(t => { t.hp = Math.round(t.maxHp * sk.revive); push(t.name + ' 被复活！', 'heal'); });
@@ -1523,6 +1540,7 @@ code.num { font-family: Consolas, monospace; }
             let bufKey = sk.buff === 'def' ? 'defBuff' : sk.buff === 'atk' ? 'atkBuff' : 'hpBuff';
             buffed.forEach(t => { t.status[bufKey] = Math.max(t.status[bufKey] || 0, sk.pct || 0); });
             push(u.name + ' 施展『' + sk.name + '』，' + (sk.buff === 'def' ? '提升防御' : sk.buff === 'atk' ? '提升攻击' : '提升生命') + '！', 'buff');
+            events.push({ type: 'buff', team: u.team, idx: u.sideIdx, sk: sk.name });
             acted = true;
           }
         }
@@ -1533,6 +1551,7 @@ code.num { font-family: Consolas, monospace; }
           const t = pickFoe(u, foes)[0];
           const r = dealDamage(u, t, 1.0);
           push(u.name + ' 攻击 ' + t.name + (r.crit ? '，暴击' : '') + '，造成 ' + r.dmg + ' 伤害！', r.crit ? 'crit' : 'dmg');
+          events.push({ type: 'dmg', team: u.team, idx: u.sideIdx, sk: '普攻', targets: [{ team: t.team, idx: t.sideIdx, dmg: r.dmg, crit: r.crit }] });
         }
       }
       // 回合末：burn/poison/regen
@@ -1564,7 +1583,7 @@ code.num { font-family: Consolas, monospace; }
       winner = ea >= aa ? 'enemy' : 'ally';
     }
     const timeout = winner !== 'ally' && alive('enemy').length > 0 && alive('ally').length > 0;
-    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout };
+    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout, events };
   }
 
   // ---------- 主线 ----------
@@ -1754,7 +1773,7 @@ code.num { font-family: Consolas, monospace; }
   const S = {
     game: null, tab: 'main', race: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0,
+    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0, animating: false,
     lastPush: 0
   };
 
@@ -1935,18 +1954,19 @@ code.num { font-family: Consolas, monospace; }
     // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
     const heroNm = g.heroName || race.name + '道友';
     const pu = C.formationUnits(g);
-    const slotHtml = (nm, tag, color, hero, boss) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '"><div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
+    const slotHtml = (side, idx, nm, tag, color, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '">' +
+      '<div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
     let ph = '';
-    pu.forEach(u => {
-      if (u.isHero) ph += slotHtml(heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
+    pu.forEach((u, i) => {
+      if (u.isHero) ph += slotHtml(0, i, heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(0, i, tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
     });
-    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty">空位</div>';
+    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage);
     let eh = '';
-    enemies.forEach(en => { eh += slotHtml(en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
-    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty">空位</div>';
+    enemies.forEach((en, i) => { eh += slotHtml(1, i, en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
+    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     v.innerHTML = `
       <div class="stat-top">
         <span class="st-name"><span class="ico">✧</span>${heroNm}</span>
@@ -1967,11 +1987,10 @@ code.num { font-family: Consolas, monospace; }
       <div class="card">
         <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
         <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
-          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
+          <button class="btn btn-gold" data-act="push">挑战下一层（${stage}）</button>
           <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
         </div>
-        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一关；打不过请升级、养仙府、抽伙伴、渡劫。</div>
+        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一层自动挂机；按速度先后出手，全员出手一次算一回合。</div>
       </div>
 
       <div class="card">
@@ -2282,9 +2301,50 @@ code.num { font-family: Consolas, monospace; }
     if (cb) cb(count);
   }
 
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  function popDamage(slot, text, crit, heal) {
+    const d = document.createElement('div');
+    d.className = 'dmg-pop' + (crit ? ' crit' : '') + (heal ? ' heal' : '');
+    d.textContent = text;
+    slot.appendChild(d);
+    setTimeout(() => d.remove(), 900);
+  }
+  // 战斗动画：按事件回放，站位碰撞 + 伤害/暴击飘字 + 回合计数
+  async function playBattle(events, onDone) {
+    const bf = document.querySelector('.battle-field');
+    if (!bf) { if (onDone) onDone(); return; }
+    S.animating = true;
+    const roundEl = bf.querySelector('.bf-round');
+    const slotEl = (side, idx) => bf.querySelector('[data-side="' + side + '"][data-idx="' + idx + '"]');
+    for (const ev of events) {
+      if (ev.type === 'round') { if (roundEl) roundEl.textContent = ev.n + '/30回合'; await sleep(150); continue; }
+      const aSide = ev.team === 'ally' ? 0 : 1;
+      const aEl = slotEl(aSide, ev.idx);
+      if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
+      (ev.targets || []).forEach(t => {
+        const tSide = t.team === 'ally' ? 0 : 1;
+        const tEl = slotEl(tSide, t.idx);
+        if (!tEl) return;
+        if (ev.type === 'dmg') popDamage(tEl, '-' + F(t.dmg), t.crit, false);
+        else if (ev.type === 'heal') popDamage(tEl, '+' + F(t.amount), false, true);
+      });
+      if (ev.type === 'buff' && aEl) { aEl.classList.add('buff-flash'); setTimeout(() => aEl.classList.remove('buff-flash'), 450); }
+      await sleep(330);
+      if (aEl) aEl.classList.remove('lunge-right', 'lunge-left');
+    }
+    S.animating = false;
+    if (onDone) onDone();
+  }
+
   const act = {
-    'push': function () { runMainline(() => { C.save(S.game); render(); }, 1); },
-    'pushx10': function () { runMainline(() => { C.save(S.game); render(); }, 10); },
+    'push': function () {
+      if (S.animating) return;
+      const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
+      if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
+      else addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，退回第 ' + S.game.mainline.stage + ' 层' : '✘ 第 ' + r.stage + ' 关挑战失败', 'bl-system');
+      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); });
+    },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
     'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
     'layerup': function () { const r = C.breakthroughLayer(S.game); toast(r.msg); if (r.ok) { addLog('main', r.msg, 'bl-system'); C.save(S.game); } render(); },
@@ -2377,7 +2437,7 @@ code.num { font-family: Consolas, monospace; }
     const g = S.game;
     C.tick(g, Date.now());
     // 自动推关
-    if (S.autoPush) {
+    if (S.autoPush && !S.animating) {
       const now = Date.now();
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
@@ -2394,7 +2454,7 @@ code.num { font-family: Consolas, monospace; }
     C.save(g);
     renderHeader();
     // 若在主界面，轻量更新（不整页重绘）
-    if (S.tab === 'main') {
+    if (S.tab === 'main' && !S.animating) {
       tickCounter++;
       if (tickCounter % 20 === 0) renderMain($('#cview'));
     }
