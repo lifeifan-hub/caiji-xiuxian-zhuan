@@ -51,6 +51,33 @@
     toast('欢迎踏入仙途，' + RACE[race].name + '道友！');
     C.recomputeStats(g);
     renderHeader();
+    startMusic();
+    updateMusicBtn();
+  }
+
+  // ---------- 背景音乐 ----------
+  function isMuted() { try { return localStorage.getItem('caiji_muted') === '1'; } catch (e) { return false; } }
+  function setMuted(m) { try { localStorage.setItem('caiji_muted', m ? '1' : '0'); } catch (e) {} }
+  function updateMusicBtn() { const b = $('#music-btn'); if (b) b.textContent = isMuted() ? '🔇' : '🔊'; }
+  function startMusic() {
+    const a = $('#bgm');
+    if (!a) return;
+    a.volume = 0.5;
+    a.muted = isMuted();
+    if (!isMuted()) a.play().catch(() => {});
+  }
+  function bindMusic() {
+    const b = $('#music-btn');
+    if (b) b.onclick = () => {
+      const m = !isMuted();
+      setMuted(m);
+      const a = $('#bgm');
+      if (a) { a.muted = m; if (!m) a.play().catch(() => {}); }
+      updateMusicBtn();
+    };
+    const once = () => startMusic();
+    document.addEventListener('pointerdown', once, { once: true });
+    document.addEventListener('keydown', once, { once: true });
   }
 
   // ---------- 顶栏 ----------
@@ -581,6 +608,8 @@
 
   // ---------- 启动 ----------
   function boot() {
+    bindMusic();
+    updateMusicBtn();
     const saved = C.load();
     if (saved && saved.v) {
       S.game = saved;

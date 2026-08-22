@@ -26,7 +26,7 @@
     <!-- 游戏主界面 -->
     <div id="game" class="hide">
       <header id="top">
-        <div id="mytitle"><b>菜鸡修仙传</b> <span id="realm-tag"></span></div>
+        <div id="mytitle"><b>菜鸡修仙传</b><span class="mt-right"><span id="realm-tag"></span><button id="music-btn" class="btn btn-sm" title="背景音乐">🔊</button></span></div>
         <div id="resbar"></div>
         <div id="stamline"></div>
       </header>
@@ -39,6 +39,7 @@
 
   <!-- 悬浮提示 -->
   <div id="toast" class="toast hide"></div>
+  <audio id="bgm" src="bgm.wav" loop preload="none"></audio>
 
   <script src="js/data.js"></script>
   <script src="js/core.js"></script>
