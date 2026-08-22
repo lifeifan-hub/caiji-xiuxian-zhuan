@@ -611,7 +611,6 @@
       const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
       S.battleRounds = (r.res && r.res.rounds) || 0;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
-      else addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，退回第 ' + S.game.mainline.stage + ' 层' : '✘ 第 ' + r.stage + ' 关挑战失败', 'bl-system');
       playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
     },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
@@ -715,8 +714,6 @@
         if (r.ok) {
           addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
           C.recomputeStats(g);
-        } else if (r.res && r.res.timeout) {
-          addLog('main', '✘ 30回合未击破，退回第 ' + g.mainline.stage + ' 关', 'bl-system');
         }
         playBattle((r.res && r.res.events) || [], () => { C.save(g); renderHeader(); if (S.tab === 'main') renderMain($('#cview')); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
