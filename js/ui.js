@@ -560,7 +560,7 @@
     setTimeout(() => d.remove(), 900);
   }
   // 战斗动画：按事件回放，站位碰撞 + 伤害/暴击飘字 + 回合计数
-  async function playBattle(events, onDone) {
+  async function playBattle(events, onDone, outcome) {
     const bf = document.querySelector('.battle-field');
     if (!bf) { if (onDone) onDone(); return; }
     S.animating = true;
@@ -593,6 +593,14 @@
       await sleep(330);
       if (aEl) aEl.classList.remove('lunge-right', 'lunge-left');
     }
+    if (outcome && bf) {
+      const res = document.createElement('div');
+      res.className = 'bf-result ' + (outcome === 'win' ? 'win' : 'lose');
+      res.textContent = outcome === 'win' ? '胜！' : outcome === 'lose' ? '败…' : '超时·退回';
+      bf.appendChild(res);
+      await sleep(750);
+      if (res.parentNode) res.remove();
+    }
     S.animating = false;
     if (onDone) onDone();
   }
@@ -604,7 +612,7 @@
       S.battleRounds = (r.res && r.res.rounds) || 0;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
       else addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，退回第 ' + S.game.mainline.stage + ' 层' : '✘ 第 ' + r.stage + ' 关挑战失败', 'bl-system');
-      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); });
+      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
     },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
     'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
@@ -710,6 +718,7 @@
         } else if (r.res && r.res.timeout) {
           addLog('main', '✘ 30回合未击破，退回第 ' + g.mainline.stage + ' 关', 'bl-system');
         }
+        playBattle((r.res && r.res.events) || [], () => { C.save(g); renderHeader(); if (S.tab === 'main') renderMain($('#cview')); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
     }
     C.save(g);
