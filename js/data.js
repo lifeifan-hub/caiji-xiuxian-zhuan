@@ -14,10 +14,30 @@
   const QMAP = { 白: 0, 绿: 1, 蓝: 2, 紫: 3, 金: 4, 红: 5 };
   const ROLES = { atk: '输出', tank: '坦克', heal: '治疗', ctrl: '控制' };
   const RACE = {
-    human: { name: '人族', desc: '天赋镇魂：控制技能命中率+20%，免疫沉默。', passive: 'hu' },
-    demon: { name: '魔族', desc: '天赋魔躯：暴击率+15%，暴击伤害+25%。', passive: 'de' },
-    dragon: { name: '龙人族', desc: '天赋龙鳞：生命+30%，防御+20%。', passive: 'dr' },
-    elf: { name: '精灵族', desc: '天赋生生不息：治疗量+30%，每回合末自动回血。', passive: 'el' }
+    human: {
+      name: '人族', passive: 'hu', intro: '沉默掌控',
+      nid: '人·灵气刃', uid: '人·镇魂域',
+      normal: { name: '灵气刃', text: '攻击当前敌人，造成100%法术伤害。' },
+      ultimate: { name: '镇魂领域', text: '攻击全体敌人，造成150%伤害，并有35%概率使其沉默6秒。' }
+    },
+    demon: {
+      name: '魔族', passive: 'de', intro: '高爆输出',
+      nid: '魔·魔爪', uid: '魔·魔吞天地',
+      normal: { name: '魔爪', text: '攻击当前敌人，造成100%物理伤害。' },
+      ultimate: { name: '魔吞天地', text: '攻击全体敌人，造成175%伤害，并提高自身50%攻击，持续6秒。' }
+    },
+    dragon: {
+      name: '龙人族', passive: 'dr', intro: '肉盾守护',
+      nid: '龙·龙爪', uid: '龙·真龙威',
+      normal: { name: '龙爪', text: '攻击当前敌人，造成100%物理伤害。' },
+      ultimate: { name: '真龙威', text: '嘲讽敌人攻击自己，提高自身50%防御持续6秒，同时对敌人造成180%伤害。' }
+    },
+    elf: {
+      name: '精灵族', passive: 'el', intro: '治疗续航',
+      nid: '精·自然之箭', uid: '精·圣光普照',
+      normal: { name: '自然之箭', text: '攻击当前敌人，造成100%法术伤害。' },
+      ultimate: { name: '圣光普照', text: '治疗全体队友，回复相当于自身攻击60%的治疗量，提升全体队友5%攻击持续6秒，并驱散3名队友的减益buff。' }
+    }
   };
 
   // ---------- 境界体系 ----------
@@ -164,29 +184,25 @@
     '生生不息': { name: '生生不息', type: 'heal', mult: 2.2, cd: 3, regen: 0.4, dur: 3, target: 'all' },
     '万象归墟': { name: '万象归墟', type: 'dmg', mult: 3.8, cd: 4, freeze: 0.7, dur: 1, target: 'all' },
     // ---- 主角种族功法技能 ----
-    '人·镇魂': { name: '镇魂咒', type: 'dmg', mult: 1.6, cd: 2, silence: 0.6, dur: 2, target: 'all' },
-    '人·封灵': { name: '封灵印', type: 'dmg', mult: 2.0, cd: 3, stun: 0.6, dur: 1, target: 'one' },
-    '人·禁言': { name: '禁域', type: 'dmg', mult: 2.4, cd: 4, silence: 0.8, dur: 2, target: 'all' },
-    '魔·魔焰诀': { name: '魔焰诀', type: 'dmg', mult: 2.2, cd: 2, burn: 0.55, dur: 2, target: 'one' },
-    '魔·血爆': { name: '血爆', type: 'dmg', mult: 3.0, cd: 3, target: 'all' },
-    '魔·魔吞天地': { name: '魔吞天地', type: 'dmg', mult: 3.6, cd: 4, lifesteal: 0.6, target: 'all' },
-    '龙·龙吟': { name: '龙吟', type: 'dmg', mult: 2.0, cd: 2, stun: 0.5, dur: 1, target: 'all' },
-    '龙·龙息': { name: '龙息', type: 'dmg', mult: 2.6, cd: 3, burn: 0.5, dur: 2, target: 'all' },
-    '龙·真龙罩': { name: '真龙罩', type: 'buff', buff: 'def', pct: 120, dur: 2, cd: 3, target: 'self' },
-    '精·甘露诀': { name: '甘露诀', type: 'heal', mult: 2.4, cd: 2, regen: 0.2, dur: 3, target: 'all' },
-    '精·自然力': { name: '自然之力', type: 'buff', buff: 'atk', pct: 50, dur: 2, cd: 3, target: 'all' },
-    '精·圣光普照': { name: '圣光普照', type: 'heal', mult: 3.2, cd: 4, clear: true, regen: 0.3, dur: 3, target: 'all' },
+    '人·灵气刃': { name: '灵气刃', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'magic' },
+    '人·镇魂域': { name: '镇魂领域', type: 'dmg', mult: 1.5, cd: 5, target: 'all', silence: 0.35, dur: 3, dmgType: 'magic' },
+    '魔·魔爪': { name: '魔爪', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'physical' },
+    '魔·魔吞天地': { name: '魔吞天地', type: 'dmg', mult: 1.75, cd: 5, target: 'all', selfBuff: 'atk', pct: 50, dur: 3, dmgType: 'physical' },
+    '龙·龙爪': { name: '龙爪', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'physical' },
+    '龙·真龙威': { name: '真龙威', type: 'dmg', mult: 1.8, cd: 5, target: 'all', selfBuff: 'def', pct: 50, dur: 3, selfTaunt: 3, dmgType: 'physical' },
+    '精·自然之箭': { name: '自然之箭', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'magic' },
+    '精·圣光普照': { name: '圣光普照', type: 'heal', mult: 0.6, cd: 5, target: 'all', clear: true, buffAtk: 5, dur: 3, dmgType: 'magic' },
     // ---- 功法被动 ----
     '被动·静': { name: '静心诀', type: 'passive', pstat: 'spd', amt: 12 }
   };
 
   // ---------- 主角功法研习 (仙府·功法) 树 ----------
-  // 主角默认拥有 basic 与种族被动；随功法层数解锁更多技能
+  // 功法层数提升主角攻击/速度；种族专属大招为天生技能
   const GONGFAS = {
-    human: ['人·镇魂', '人·封灵', '人·禁言'],
-    demon: ['魔·魔焰诀', '魔·血爆', '魔·魔吞天地'],
-    dragon: ['龙·龙吟', '龙·龙息', '龙·真龙罩'],
-    elf: ['精·甘露诀', '精·自然力', '精·圣光普照']
+    human: ['人·镇魂域'],
+    demon: ['魔·魔吞天地'],
+    dragon: ['龙·真龙威'],
+    elf: ['精·圣光普照']
   };
 
   // ---------- 装备槽位 ----------

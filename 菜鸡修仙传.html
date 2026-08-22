@@ -50,6 +50,13 @@ body {
 .panel { background: linear-gradient(180deg, rgba(34,26,69,.8), rgba(23,17,48,.9)); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
 .panel-title { font-weight: 700; color: var(--gold); margin-bottom: 10px; letter-spacing: 1px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-label { display: block; color: var(--ink-dim); font-size: 13px; margin: 6px 2px 4px; }
+.name-input {
+  width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.06); color: var(--ink); font-size: 15px; font-family: inherit;
+  margin-bottom: 12px; outline: none;
+}
+.name-input:focus { border-color: var(--gold); background: rgba(240,199,94,.08); }
 .race-card {
   border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer;
   background: rgba(23,17,48,.6); transition: all .15s;
@@ -57,7 +64,10 @@ body {
 .race-card:hover { transform: translateY(-2px); }
 .race-card.sel { border-color: var(--gold); background: rgba(240,199,94,.12); box-shadow: 0 0 0 2px rgba(240,199,94,.3); }
 .race-card h3 { color: var(--gold2); font-size: 17px; margin-bottom: 6px; }
-.race-card small { color: var(--ink-dim); display: block; }
+.race-card .sk { margin-top: 6px; }
+.race-card .sk b { font-size: 13px; }
+.race-card .sk .dim { font-size: 12px; margin-top: 2px; }
+.race-card .tag { font-size: 11px; vertical-align: 2px; }
 .note { color: var(--dim); margin: 12px 2px; font-size: 13px; }
 .warn { color: var(--red); font-size: 13px; min-height: 18px; }
 
@@ -181,8 +191,10 @@ code.num { font-family: Consolas, monospace; }
       <div class="subtitle">文字MUD · 放置修仙 · 策略战斗</div>
       <div class="panel">
         <div class="panel-title">选择你的种族</div>
+        <label class="field-label">给你的道号起个名字（可选）</label>
+        <input id="hero-name" class="name-input" maxlength="12" placeholder="如：白衣剑仙 / 打工人 / 青莲道人">
         <div id="race-cards" class="grid2"></div>
-        <div class="note">· 开局四族各带种族被动，决定你的打法风格。<br>· 人族主控制、魔族主爆发、龙人族主肉盾、精灵族主续航。</div>
+        <div class="note">· 点击选中种族后查看其「普通技能 + 专属技能」。<br>· 人族控制、魔族爆发、龙人族肉盾、精灵族续航，打法各异；战斗靠速度/控制/五行/治疗以弱胜强。</div>
         <div id="start-err" class="warn"></div>
         <button id="btn-start" class="btn btn-gold block" disabled>踏入仙途</button>
       </div>
@@ -226,10 +238,30 @@ code.num { font-family: Consolas, monospace; }
   const QMAP = { 白: 0, 绿: 1, 蓝: 2, 紫: 3, 金: 4, 红: 5 };
   const ROLES = { atk: '输出', tank: '坦克', heal: '治疗', ctrl: '控制' };
   const RACE = {
-    human: { name: '人族', desc: '天赋镇魂：控制技能命中率+20%，免疫沉默。', passive: 'hu' },
-    demon: { name: '魔族', desc: '天赋魔躯：暴击率+15%，暴击伤害+25%。', passive: 'de' },
-    dragon: { name: '龙人族', desc: '天赋龙鳞：生命+30%，防御+20%。', passive: 'dr' },
-    elf: { name: '精灵族', desc: '天赋生生不息：治疗量+30%，每回合末自动回血。', passive: 'el' }
+    human: {
+      name: '人族', passive: 'hu', intro: '沉默掌控',
+      nid: '人·灵气刃', uid: '人·镇魂域',
+      normal: { name: '灵气刃', text: '攻击当前敌人，造成100%法术伤害。' },
+      ultimate: { name: '镇魂领域', text: '攻击全体敌人，造成150%伤害，并有35%概率使其沉默6秒。' }
+    },
+    demon: {
+      name: '魔族', passive: 'de', intro: '高爆输出',
+      nid: '魔·魔爪', uid: '魔·魔吞天地',
+      normal: { name: '魔爪', text: '攻击当前敌人，造成100%物理伤害。' },
+      ultimate: { name: '魔吞天地', text: '攻击全体敌人，造成175%伤害，并提高自身50%攻击，持续6秒。' }
+    },
+    dragon: {
+      name: '龙人族', passive: 'dr', intro: '肉盾守护',
+      nid: '龙·龙爪', uid: '龙·真龙威',
+      normal: { name: '龙爪', text: '攻击当前敌人，造成100%物理伤害。' },
+      ultimate: { name: '真龙威', text: '嘲讽敌人攻击自己，提高自身50%防御持续6秒，同时对敌人造成180%伤害。' }
+    },
+    elf: {
+      name: '精灵族', passive: 'el', intro: '治疗续航',
+      nid: '精·自然之箭', uid: '精·圣光普照',
+      normal: { name: '自然之箭', text: '攻击当前敌人，造成100%法术伤害。' },
+      ultimate: { name: '圣光普照', text: '治疗全体队友，回复相当于自身攻击60%的治疗量，提升全体队友5%攻击持续6秒，并驱散3名队友的减益buff。' }
+    }
   };
 
   // ---------- 境界体系 ----------
@@ -376,29 +408,25 @@ code.num { font-family: Consolas, monospace; }
     '生生不息': { name: '生生不息', type: 'heal', mult: 2.2, cd: 3, regen: 0.4, dur: 3, target: 'all' },
     '万象归墟': { name: '万象归墟', type: 'dmg', mult: 3.8, cd: 4, freeze: 0.7, dur: 1, target: 'all' },
     // ---- 主角种族功法技能 ----
-    '人·镇魂': { name: '镇魂咒', type: 'dmg', mult: 1.6, cd: 2, silence: 0.6, dur: 2, target: 'all' },
-    '人·封灵': { name: '封灵印', type: 'dmg', mult: 2.0, cd: 3, stun: 0.6, dur: 1, target: 'one' },
-    '人·禁言': { name: '禁域', type: 'dmg', mult: 2.4, cd: 4, silence: 0.8, dur: 2, target: 'all' },
-    '魔·魔焰诀': { name: '魔焰诀', type: 'dmg', mult: 2.2, cd: 2, burn: 0.55, dur: 2, target: 'one' },
-    '魔·血爆': { name: '血爆', type: 'dmg', mult: 3.0, cd: 3, target: 'all' },
-    '魔·魔吞天地': { name: '魔吞天地', type: 'dmg', mult: 3.6, cd: 4, lifesteal: 0.6, target: 'all' },
-    '龙·龙吟': { name: '龙吟', type: 'dmg', mult: 2.0, cd: 2, stun: 0.5, dur: 1, target: 'all' },
-    '龙·龙息': { name: '龙息', type: 'dmg', mult: 2.6, cd: 3, burn: 0.5, dur: 2, target: 'all' },
-    '龙·真龙罩': { name: '真龙罩', type: 'buff', buff: 'def', pct: 120, dur: 2, cd: 3, target: 'self' },
-    '精·甘露诀': { name: '甘露诀', type: 'heal', mult: 2.4, cd: 2, regen: 0.2, dur: 3, target: 'all' },
-    '精·自然力': { name: '自然之力', type: 'buff', buff: 'atk', pct: 50, dur: 2, cd: 3, target: 'all' },
-    '精·圣光普照': { name: '圣光普照', type: 'heal', mult: 3.2, cd: 4, clear: true, regen: 0.3, dur: 3, target: 'all' },
+    '人·灵气刃': { name: '灵气刃', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'magic' },
+    '人·镇魂域': { name: '镇魂领域', type: 'dmg', mult: 1.5, cd: 5, target: 'all', silence: 0.35, dur: 3, dmgType: 'magic' },
+    '魔·魔爪': { name: '魔爪', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'physical' },
+    '魔·魔吞天地': { name: '魔吞天地', type: 'dmg', mult: 1.75, cd: 5, target: 'all', selfBuff: 'atk', pct: 50, dur: 3, dmgType: 'physical' },
+    '龙·龙爪': { name: '龙爪', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'physical' },
+    '龙·真龙威': { name: '真龙威', type: 'dmg', mult: 1.8, cd: 5, target: 'all', selfBuff: 'def', pct: 50, dur: 3, selfTaunt: 3, dmgType: 'physical' },
+    '精·自然之箭': { name: '自然之箭', type: 'dmg', mult: 1.0, cd: 0, target: 'one', dmgType: 'magic' },
+    '精·圣光普照': { name: '圣光普照', type: 'heal', mult: 0.6, cd: 5, target: 'all', clear: true, buffAtk: 5, dur: 3, dmgType: 'magic' },
     // ---- 功法被动 ----
     '被动·静': { name: '静心诀', type: 'passive', pstat: 'spd', amt: 12 }
   };
 
   // ---------- 主角功法研习 (仙府·功法) 树 ----------
-  // 主角默认拥有 basic 与种族被动；随功法层数解锁更多技能
+  // 功法层数提升主角攻击/速度；种族专属大招为天生技能
   const GONGFAS = {
-    human: ['人·镇魂', '人·封灵', '人·禁言'],
-    demon: ['魔·魔焰诀', '魔·血爆', '魔·魔吞天地'],
-    dragon: ['龙·龙吟', '龙·龙息', '龙·真龙罩'],
-    elf: ['精·甘露诀', '精·自然力', '精·圣光普照']
+    human: ['人·镇魂域'],
+    demon: ['魔·魔吞天地'],
+    dragon: ['龙·真龙威'],
+    elf: ['精·圣光普照']
   };
 
   // ---------- 装备槽位 ----------
@@ -562,6 +590,7 @@ code.num { font-family: Consolas, monospace; }
     const state = {
       v: 1,
       race,
+      heroName: '',
       heroEl: '金', // 主角五行，可在界面切换
       created: now,
       lastTick: now,
@@ -736,6 +765,9 @@ code.num { font-family: Consolas, monospace; }
     if (key === 'hero') {
       const race = P.RACE[s.race];
       if (race.passive === 'dr') { extra.hp *= 1.30; extra.def *= 1.20; }
+      // 功法研习加成：提升攻击/速度
+      extra.atk *= (1 + (s.gongfa || 0) * 0.012);
+      extra.spd += (s.gongfa || 0) * 1.0;
     }
     extra.hp = Math.max(1, Math.round(extra.hp * (1 + pctHp) + equipBonus.flat.hp));
     extra.atk = Math.max(1, Math.round(extra.atk * (1 + pctAtk) + equipBonus.flat.atk));
@@ -822,10 +854,11 @@ code.num { font-family: Consolas, monospace; }
   }
 
   function recomputeStats(state) {
-    // 刷新主角技能（根据功法层数）
-    const raceSkills = P.GONGFAS[state.race] || [];
-    const unlocked = raceSkills.slice(0, state.gongfa);
-    state.skills = ['basic'].concat(unlocked);
+    // 主角天生掌握：种族普通技能 + 种族专属大招
+    const rc = P.RACE[state.race] || {};
+    const nid = rc.nid || 'basic';
+    const uid = (P.GONGFAS[state.race] || [])[0] || rc.uid;
+    state.skills = [nid, uid].filter(Boolean);
     state.stats = unitStats(state, 'hero');
     return state;
   }
@@ -1229,7 +1262,7 @@ code.num { font-family: Consolas, monospace; }
     if (!st) return null;
     if (iid === 'hero') {
       return {
-        name: '主角（' + P.RACE[state.race].name + '）',
+        name: (state.heroName || '主角') + '（' + P.RACE[state.race].name + '）',
         element: state.heroEl, role: 'atk', team: 'ally',
         maxHp: st.hp, hp: st.hp, atk: st.atk, def: st.def, spd: st.spd,
         crit: st.crit, critDmg: st.critDmg || 0, heal: st.heal || 0,
@@ -1333,27 +1366,42 @@ code.num { font-family: Consolas, monospace; }
     let round = 0, winner = null;
     const all = playerUnits.concat(enemyUnits);
     // 每回合重置状态计时
-    all.forEach(u => { u.cds = u.skills.map(() => 0); u.status = { stun: 0, freeze: 0, silence: 0, burn: 0, poison: 0, regen: 0, atkBuff: 0, defBuff: 0, hpBuff: 0 }; });
+    all.forEach(u => { u.cds = u.skills.map(() => 0); u.status = { stun: 0, freeze: 0, silence: 0, burn: 0, poison: 0, regen: 0, taunt: 0, atkBuff: 0, defBuff: 0, hpBuff: 0 }; });
     const alive = (side) => all.filter(u => u.team === side && u.hp > 0);
 
     const order = [...all].sort((a, b) => b.spd - a.spd || Math.random() - 0.5);
     // 银弹：给单位起手一个能量用 cd 控制：cd>0 代表技能冷却
     function pickSkill(u) {
-      const readyIdx = u.skills.findIndex((sk, idx) => sk && u.cds[idx] <= 0);
-      if (readyIdx < 0) return null;
-      return { sk: u.skills[readyIdx], idx: readyIdx };
+      let best = null;
+      u.skills.forEach((sk, idx) => {
+        if (sk && u.cds[idx] <= 0) {
+          if (!best || (sk.cd || 0) > (best.sk.cd || 0)) best = { sk, idx };
+        }
+      });
+      return best;
+    }
+    // 嘲讽：敌方单体攻击会优先打我方嘲讽者
+    function pickFoe(u, foes) {
+      if (u.team === 'enemy') {
+        const taunters = foes.filter(x => x.status.taunt > 0);
+        if (taunters.length) return [taunters[Math.floor(Math.random() * taunters.length)]];
+      }
+      return [foes[Math.floor(Math.random() * foes.length)]];
     }
     function targetOf(u, sk) {
       const foes = alive(u.team === 'ally' ? 'enemy' : 'ally');
       const friends = alive(u.team);
       if (!foes.length) return null;
       if (sk.target === 'all') return foes;
-      if (sk.target === 'two') return foes.filter((_, i) => i < 2);
+      if (sk.target === 'two') {
+        const first = pickFoe(u, foes);
+        const rest = foes.filter(f => f !== first[0]);
+        return rest.length ? [first[0], rest[Math.floor(Math.random() * rest.length)]] : first;
+      }
       if (sk.target === 'allylow') { return [ [...friends].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] ]; }
       if (sk.target === 'allall') return all.filter(x => x.team === u.team);
       if (sk.target === 'self') return [u];
-      // 单体 -> 随机或最脆
-      return [foes[Math.floor(Math.random() * foes.length)]];
+      return pickFoe(u, foes);
     }
 
     function dealDamage(att, def, mult) {
@@ -1403,7 +1451,7 @@ code.num { font-family: Consolas, monospace; }
           continue;
         }
         // 行动
-        let acted = false;
+          let acted = false;
         let sel = pickSkill(u);
         // 沉默只能用普攻
         if (u.status.silence > 0) sel = null;
@@ -1414,15 +1462,18 @@ code.num { font-family: Consolas, monospace; }
           if (sk.type === 'dmg') {
             if (targets && targets.length) {
               const total = targets.map(t => dealDamage(u, t, sk.mult));
+              const dT = sk.dmgType === 'physical' ? '物理' : sk.dmgType === 'magic' ? '法术' : '';
               const pr = (sk.chance != null) ? sk.chance : (sk.stun || sk.freeze || sk.silence);
               targets.forEach((t, i) => {
                 if (sk.stun) applyStatus(t, 'stun', sk.stun, sk.dur || 1);
                 if (sk.freeze) applyStatus(t, 'freeze', sk.freeze, sk.dur || 1);
                 if (sk.silence) applyStatus(t, 'silence', sk.silence, sk.dur || 1);
                 if (sk.burn) { t.status.burn = Math.max(t.status.burn, sk.dur || 2); }
-                if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
-                else push(u.name + ' 施展『' + sk.name + '』攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害' + (total[i].em > 1 ? '（五行克制）' : '') + '！', 'dmg');
+                if (total[i].crit) push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '暴击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害！', 'crit');
+                else push(u.name + ' 施展『' + sk.name + '』' + (dT ? '（' + dT + '）' : '') + '攻击 ' + t.name + '，造成 ' + total[i].dmg + ' 伤害' + (total[i].em > 1 ? '（五行克制）' : '') + '！', 'dmg');
               });
+              if (sk.selfBuff) { const selfKey = sk.selfBuff === 'def' ? 'defBuff' : sk.selfBuff === 'atk' ? 'atkBuff' : 'hpBuff'; u.status[selfKey] = Math.max(u.status[selfKey] || 0, sk.pct || 0); push(u.name + ' 施展『' + sk.name + '』后自身' + (sk.selfBuff === 'atk' ? '攻击' : '防御') + '提升' + (sk.pct || 0) + '%！', 'buff'); }
+              if (sk.selfTaunt) { u.status.taunt = Math.max(u.status.taunt || 0, sk.selfTaunt); push(u.name + ' 施展『' + sk.name + '』，嘲讽敌人攻击自己！', 'buff'); }
               if (sk.lifesteal && targets.length) {
                 const gained = Math.round(total.reduce((a, b) => a + b.dmg, 0) * sk.lifesteal);
                 u.hp = Math.min(u.maxHp, u.hp + gained);
@@ -1442,8 +1493,10 @@ code.num { font-family: Consolas, monospace; }
               amt += v;
             });
             if (sk.clear) healTargets.forEach(t => { t.status.stun = 0; t.status.freeze = 0; t.status.silence = 0; t.status.burn = 0; });
+            if (sk.buffAtk) healTargets.forEach(t => { t.status.atkBuff = Math.max(t.status.atkBuff || 0, sk.buffAtk); });
             if (sk.revive) all.filter(x => x.team === u.team && x.hp <= 0).forEach(t => { t.hp = Math.round(t.maxHp * sk.revive); push(t.name + ' 被复活！', 'heal'); });
             push(u.name + ' 施展『' + sk.name + '』治疗，恢复全体 ' + Math.round(amt) + ' 生命！', 'heal');
+            if (sk.buffAtk) push(u.name + ' 施展『' + sk.name + '』，提升全体 ' + sk.buffAtk + '% 攻击并驱散减益！', 'buff');
             acted = true;
           } else if (sk.type === 'buff') {
             const buffed = (sk.target === 'all' || sk.target === 'allall') ? all.filter(x => x.team === u.team && x.hp > 0) : [u];
@@ -1457,7 +1510,7 @@ code.num { font-family: Consolas, monospace; }
           // 普通攻击
           const foes = alive(u.team === 'ally' ? 'enemy' : 'ally');
           if (!foes.length) continue;
-          const t = foes[Math.floor(Math.random() * foes.length)];
+          const t = pickFoe(u, foes)[0];
           const r = dealDamage(u, t, 1.0);
           push(u.name + ' 攻击 ' + t.name + (r.crit ? '，暴击' : '') + '，造成 ' + r.dmg + ' 伤害！', r.crit ? 'crit' : 'dmg');
         }
@@ -1475,6 +1528,7 @@ code.num { font-family: Consolas, monospace; }
         if (u.status.silence > 0) u.status.silence--;
         if (u.status.stun < 0) u.status.stun = 0;
         if (u.status.freeze < 0) u.status.freeze = 0;
+        if (u.status.taunt > 0) u.status.taunt--;
         if (u.status.atkBuff > 0) u.status.atkBuff--;
         if (u.status.defBuff > 0) u.status.defBuff--;
         if (u.status.hpBuff > 0) u.status.hpBuff--;
@@ -1685,7 +1739,11 @@ code.num { font-family: Consolas, monospace; }
     box.innerHTML = '';
     Object.keys(RACE).forEach(rk => {
       const r = RACE[rk];
-      const card = el('<div class="race-card" data-race="' + rk + '"><h3>' + r.name + '</h3><small>' + r.desc + '</small></div>');
+      const card = el(
+        '<div class="race-card" data-race="' + rk + '"><h3>' + r.name + ' <span class="tag">' + r.intro + '</span></h3>' +
+        '<div class="sk"><b class="gold">普通技能·' + r.normal.name + '</b><div class="dim">' + r.normal.text + '</div></div>' +
+        '<div class="sk"><b class="red">专属技能·' + r.ultimate.name + '</b><div class="dim">' + r.ultimate.text + '</div></div></div>'
+      );
       card.onclick = () => { S.race = rk; box.querySelectorAll('.race-card').forEach(c => c.classList.remove('sel')); card.classList.add('sel'); $('#btn-start').disabled = false; $('#start-err').textContent = ''; };
       box.appendChild(card);
     });
@@ -1697,6 +1755,7 @@ code.num { font-family: Consolas, monospace; }
 
   function startNewGame(race) {
     const g = C.newGame(race);
+    g.heroName = ($('#hero-name').value || '').trim();
     S.game = g;
     C.save(g);
     $('#start').classList.add('hide');
@@ -1721,6 +1780,7 @@ code.num { font-family: Consolas, monospace; }
     $('#start').classList.remove('hide');
     $('#btn-start').disabled = true;
     $('#start-err').textContent = '';
+    const nm = $('#hero-name'); if (nm) nm.value = '';
     renderStart();
     updateMusicBtn();
   }
@@ -1849,7 +1909,7 @@ code.num { font-family: Consolas, monospace; }
     v.innerHTML = `
       <div class="card">
         <div class="row xl">
-          <div><b class="gold">${race.name} · 主角</b> <span class="tag">${C.realmLabel(g)}</span></div>
+          <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
           <div class="muted">战力 <b style="color:var(--gold)">${F(C.teamPower(g))}</b></div>
         </div>
         <div class="statsrow">
@@ -1939,22 +1999,20 @@ code.num { font-family: Consolas, monospace; }
         if (bid === 'zuiyue') eff = '玉液 +' + (0.2 + lv * 0.22).toFixed(2) + '/秒';
         if (bid === 'fazhen') eff = '修为产出 x' + (1 + lv * 0.25).toFixed(2);
         if (bid === 'juling') eff = '闲置伙伴加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
-        if (bid === 'gongfa') eff = '已研习 ' + lv + '/' + DATA.GONGFAS[g.race].length + ' 层功法';
+        if (bid === 'gongfa') eff = '研习功法：主角攻击+' + (lv * 1.2).toFixed(1) + '% 速度+' + lv;
         if (bid === 'qiankun') eff = '炼丹炼器等级 +' + lv + '，解锁更高阶';
         const costStr = costText(cost);
         html += '<div class="card"><div class="row"><div><b class="gold">' + icons[bid] + ' ' + b.name + '</b> <span class="tag">Lv.' + lv + '</span></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="' + bid + '">升级</button></div>' +
           '<div class="dim mt8">' + b.desc + '</div><div class="green mt8">' + eff + '</div><div class="dim">升级消耗：' + costStr + '</div></div>';
       });
     } else if (show === 'gongfa') {
-      const list = DATA.GONGFAS[g.race];
+      const rc = DATA.RACE[g.race];
+      const ult = DATA.SKILLS[rc.uid];
       html += '<div class="card"><div class="row"><div><b class="gold">功法研习</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="gongfa">研习（消耗修为）</button></div>' +
-        '<div class="dim mt8">主角主动技能随功法逐层解锁，战斗更有利。</div><div class="mt8">';
-      list.forEach((sid, i) => {
-        const sk = DATA.SKILLS[sid];
-        const unlocked = g.gongfa > i;
-        html += '<div class="row mt8"><span>' + (unlocked ? '<span class="green">✔</span> ' : '<span class="dim">🔒</span> ') + sk.name + '（' + sk.target + '· 倍率' + sk.mult + '）</span><span class="' + (unlocked ? 'green' : 'dim') + '">' + (unlocked ? '已解锁' : '功法' + (i + 1) + '层解锁') + '</span></div>';
-      });
-      html += '</div></div>';
+        '<div class="dim mt8">研习功法提升主角 攻击/速度（当前 Lv.' + g.gongfa + ' → 攻击+' + (g.gongfa * 1.2).toFixed(1) + '% · 速度+' + g.gongfa + '）</div>' +
+        '<div class="row mt8"><span><b class="gold">种族专属·' + ult.name + '</b></span><span class="green">天生掌握</span></div>' +
+        '<div class="dim">' + rc.ultimate.text + '</div>' +
+        '<div class="row mt8"><span><b class="gold">种族普通·' + rc.normal.name + '</b></span><span class="dim">' + rc.normal.text + '</span></div></div>';
     } else if (show === 'dan') {
       html += '<div class="card"><div class="row"><div><b class="gold">丹房·造化乾坤殿 (Lv.' + g.manor.qiankun + ')</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级乾坤殿</button></div><div class="dim mt8">炼制渡劫丹、聚元丹等，渡劫丹是渡劫关键。</div></div>';
       ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {

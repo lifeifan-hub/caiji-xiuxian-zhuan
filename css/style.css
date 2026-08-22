@@ -41,6 +41,13 @@ body {
 .panel { background: linear-gradient(180deg, rgba(34,26,69,.8), rgba(23,17,48,.9)); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
 .panel-title { font-weight: 700; color: var(--gold); margin-bottom: 10px; letter-spacing: 1px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-label { display: block; color: var(--ink-dim); font-size: 13px; margin: 6px 2px 4px; }
+.name-input {
+  width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.06); color: var(--ink); font-size: 15px; font-family: inherit;
+  margin-bottom: 12px; outline: none;
+}
+.name-input:focus { border-color: var(--gold); background: rgba(240,199,94,.08); }
 .race-card {
   border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer;
   background: rgba(23,17,48,.6); transition: all .15s;
@@ -48,7 +55,10 @@ body {
 .race-card:hover { transform: translateY(-2px); }
 .race-card.sel { border-color: var(--gold); background: rgba(240,199,94,.12); box-shadow: 0 0 0 2px rgba(240,199,94,.3); }
 .race-card h3 { color: var(--gold2); font-size: 17px; margin-bottom: 6px; }
-.race-card small { color: var(--ink-dim); display: block; }
+.race-card .sk { margin-top: 6px; }
+.race-card .sk b { font-size: 13px; }
+.race-card .sk .dim { font-size: 12px; margin-top: 2px; }
+.race-card .tag { font-size: 11px; vertical-align: 2px; }
 .note { color: var(--dim); margin: 12px 2px; font-size: 13px; }
 .warn { color: var(--red); font-size: 13px; min-height: 18px; }
 

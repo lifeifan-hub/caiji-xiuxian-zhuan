@@ -29,7 +29,11 @@
     box.innerHTML = '';
     Object.keys(RACE).forEach(rk => {
       const r = RACE[rk];
-      const card = el('<div class="race-card" data-race="' + rk + '"><h3>' + r.name + '</h3><small>' + r.desc + '</small></div>');
+      const card = el(
+        '<div class="race-card" data-race="' + rk + '"><h3>' + r.name + ' <span class="tag">' + r.intro + '</span></h3>' +
+        '<div class="sk"><b class="gold">普通技能·' + r.normal.name + '</b><div class="dim">' + r.normal.text + '</div></div>' +
+        '<div class="sk"><b class="red">专属技能·' + r.ultimate.name + '</b><div class="dim">' + r.ultimate.text + '</div></div></div>'
+      );
       card.onclick = () => { S.race = rk; box.querySelectorAll('.race-card').forEach(c => c.classList.remove('sel')); card.classList.add('sel'); $('#btn-start').disabled = false; $('#start-err').textContent = ''; };
       box.appendChild(card);
     });
@@ -41,6 +45,7 @@
 
   function startNewGame(race) {
     const g = C.newGame(race);
+    g.heroName = ($('#hero-name').value || '').trim();
     S.game = g;
     C.save(g);
     $('#start').classList.add('hide');
@@ -65,6 +70,7 @@
     $('#start').classList.remove('hide');
     $('#btn-start').disabled = true;
     $('#start-err').textContent = '';
+    const nm = $('#hero-name'); if (nm) nm.value = '';
     renderStart();
     updateMusicBtn();
   }
@@ -193,7 +199,7 @@
     v.innerHTML = `
       <div class="card">
         <div class="row xl">
-          <div><b class="gold">${race.name} · 主角</b> <span class="tag">${C.realmLabel(g)}</span></div>
+          <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
           <div class="muted">战力 <b style="color:var(--gold)">${F(C.teamPower(g))}</b></div>
         </div>
         <div class="statsrow">
@@ -283,22 +289,20 @@
         if (bid === 'zuiyue') eff = '玉液 +' + (0.2 + lv * 0.22).toFixed(2) + '/秒';
         if (bid === 'fazhen') eff = '修为产出 x' + (1 + lv * 0.25).toFixed(2);
         if (bid === 'juling') eff = '闲置伙伴加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
-        if (bid === 'gongfa') eff = '已研习 ' + lv + '/' + DATA.GONGFAS[g.race].length + ' 层功法';
+        if (bid === 'gongfa') eff = '研习功法：主角攻击+' + (lv * 1.2).toFixed(1) + '% 速度+' + lv;
         if (bid === 'qiankun') eff = '炼丹炼器等级 +' + lv + '，解锁更高阶';
         const costStr = costText(cost);
         html += '<div class="card"><div class="row"><div><b class="gold">' + icons[bid] + ' ' + b.name + '</b> <span class="tag">Lv.' + lv + '</span></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="' + bid + '">升级</button></div>' +
           '<div class="dim mt8">' + b.desc + '</div><div class="green mt8">' + eff + '</div><div class="dim">升级消耗：' + costStr + '</div></div>';
       });
     } else if (show === 'gongfa') {
-      const list = DATA.GONGFAS[g.race];
+      const rc = DATA.RACE[g.race];
+      const ult = DATA.SKILLS[rc.uid];
       html += '<div class="card"><div class="row"><div><b class="gold">功法研习</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="gongfa">研习（消耗修为）</button></div>' +
-        '<div class="dim mt8">主角主动技能随功法逐层解锁，战斗更有利。</div><div class="mt8">';
-      list.forEach((sid, i) => {
-        const sk = DATA.SKILLS[sid];
-        const unlocked = g.gongfa > i;
-        html += '<div class="row mt8"><span>' + (unlocked ? '<span class="green">✔</span> ' : '<span class="dim">🔒</span> ') + sk.name + '（' + sk.target + '· 倍率' + sk.mult + '）</span><span class="' + (unlocked ? 'green' : 'dim') + '">' + (unlocked ? '已解锁' : '功法' + (i + 1) + '层解锁') + '</span></div>';
-      });
-      html += '</div></div>';
+        '<div class="dim mt8">研习功法提升主角 攻击/速度（当前 Lv.' + g.gongfa + ' → 攻击+' + (g.gongfa * 1.2).toFixed(1) + '% · 速度+' + g.gongfa + '）</div>' +
+        '<div class="row mt8"><span><b class="gold">种族专属·' + ult.name + '</b></span><span class="green">天生掌握</span></div>' +
+        '<div class="dim">' + rc.ultimate.text + '</div>' +
+        '<div class="row mt8"><span><b class="gold">种族普通·' + rc.normal.name + '</b></span><span class="dim">' + rc.normal.text + '</span></div></div>';
     } else if (show === 'dan') {
       html += '<div class="card"><div class="row"><div><b class="gold">丹房·造化乾坤殿 (Lv.' + g.manor.qiankun + ')</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级乾坤殿</button></div><div class="dim mt8">炼制渡劫丹、聚元丹等，渡劫丹是渡劫关键。</div></div>';
       ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {
