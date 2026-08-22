@@ -527,7 +527,7 @@
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
-    state.formation = ids.slice(0, 6);
+    state.formation = ids.slice(0, 5);
     // 从聚灵阵移除 & 反向
     state.formation.forEach(id => { if (state.juling.includes(id)) state.juling = state.juling.filter(x => x !== id); });
     recomputeStats(state);
@@ -539,7 +539,7 @@
   }
   function formationUnits(state) {
     const hero = { iid: 'hero', isHero: true };
-    return [hero].concat(state.formation.map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
+    return [hero].concat(state.formation.slice(0, 5).map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
   }
 
   // ---------- 法宝 ----------
@@ -895,7 +895,8 @@
       return false;
     }
 
-    for (round = 1; round <= (opts.maxRounds || 60); round++) {
+    for (round = 1; round <= (opts.maxRounds || 30); round++) {
+      push('—— 第 ' + round + ' 回合 ——', 'bl-turn');
       for (const u of order) {
         if (u.hp <= 0) continue;
         // 控制判定
@@ -999,10 +1000,11 @@
       if (allyAlive === 0) { winner = 'enemy'; break; }
     }
     if (!winner) {
-      const allyAlive = alive('ally'), enemyAlive = alive('enemy');
-      winner = enemyAlive.length >= allyAlive.length ? 'enemy' : 'ally';
+      const ea = alive('enemy').length, aa = alive('ally').length;
+      winner = ea >= aa ? 'enemy' : 'ally';
     }
-    return { winner, log, rounds: round };
+    const timeout = winner !== 'ally' && alive('enemy').length > 0 && alive('ally').length > 0;
+    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout };
   }
 
   // ---------- 主线 ----------
@@ -1018,7 +1020,7 @@
     const stage = state.mainline.stage;
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
     const enemyUnits = enemyForStage(stage);
-    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 60 });
+    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
       state.res.xiuwei += rw.xiuwei;
@@ -1036,6 +1038,11 @@
       state.mainline.stage++;
       return { ok: true, stage, reward: rw, res };
     }
+    if (res.timeout) {
+      // 30 回合内未击破敌人：挑战失败，退回上一关
+      state.mainline.stage = Math.max(1, state.mainline.stage - 1);
+      if (cb) cb({ msg: '30 回合未击破敌人，挑战失败，退回上一关！', cls: 'system' });
+    }
     return { ok: false, stage, res };
   }
 
@@ -1052,7 +1059,7 @@
     const budget = teamPower(state) * (1.25 + bossLv * 0.08);
     const b = enemyGroupByPower(budget, { boss: true, count: 1, name: '洞天魔尊·' + bossLv + '阶', spd: 110 });
     const playerUnits = formationUnits(state).map(x => buildPlayerUnit(state, x.iid)).filter(Boolean);
-    const res = simulateBattle(playerUnits, b, cb, { maxRounds: 80 });
+    const res = simulateBattle(playerUnits, b, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const fragName = pick(Object.keys(P.FABAO));
       const f = P.FABAO[fragName];
@@ -1080,7 +1087,7 @@
     const budget = teamPower(state) * (1.2 + stage * 0.03);
     const bArr = enemyGroupByPower(budget, { boss: true, count: 3, el: enemyEl, name: '五行妖灵·' + P.ELEM_NAME[enemyEl], minion: '五行妖灵', spd: 100 + stage * 2 });
     const playerUnits = formationUnits(state).map(x => buildPlayerUnit(state, x.iid)).filter(Boolean);
-    const res = simulateBattle(playerUnits, bArr, cb, { maxRounds: 60 });
+    const res = simulateBattle(playerUnits, bArr, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       state.dungeons.wuxing.bestStage = stage;
       state.res.wuxing += 15 + stage * 3;

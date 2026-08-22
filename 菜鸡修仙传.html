@@ -177,6 +177,21 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .modal h3 { color: var(--gold2); margin-bottom: 8px; letter-spacing: 2px; }
 .modal .row { justify-content: space-between; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.stat-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 10px 12px; background: linear-gradient(180deg, rgba(34,26,69,.7), rgba(23,17,48,.8)); border: 1px solid var(--line); border-radius: 11px; margin-bottom: 10px; }
+.stat-top span { font-size: 13px; color: var(--ink-dim); white-space: nowrap; }
+.stat-top .ico { margin-right: 3px; }
+.stat-top b { color: var(--ink); }
+.stat-top .st-name { color: var(--gold2); font-weight: 700; }
+.battle-field { position: relative; height: 32vh; min-height: 200px; max-height: 300px; background: radial-gradient(900px 240px at 50% 0%, #2a2050, #120d24); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; padding: 32px 10px 10px; }
+.bf-round { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--gold); border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: rgba(0,0,0,.4); }
+.bf-body { display: flex; gap: 6px; height: 100%; align-items: stretch; }
+.bf-side { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 6px; align-content: space-evenly; }
+.slot { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+.slot-name { font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-tag { font-size: 10px; color: var(--ink-dim); margin-top: 1px; }
+.slot.empty { color: var(--dim); font-size: 11px; display: flex; align-items: center; justify-content: center; background: transparent; border-color: rgba(150,150,150,.15); }
+.slot-hero { border-color: var(--gold); background: rgba(240,199,94,.14); box-shadow: 0 0 8px rgba(240,199,94,.25); }
+.slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
 .sec-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
 .sec-tabs .btn { white-space: nowrap; flex: 0 0 auto; }
@@ -1072,7 +1087,7 @@ code.num { font-family: Consolas, monospace; }
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
-    state.formation = ids.slice(0, 6);
+    state.formation = ids.slice(0, 5);
     // 从聚灵阵移除 & 反向
     state.formation.forEach(id => { if (state.juling.includes(id)) state.juling = state.juling.filter(x => x !== id); });
     recomputeStats(state);
@@ -1084,7 +1099,7 @@ code.num { font-family: Consolas, monospace; }
   }
   function formationUnits(state) {
     const hero = { iid: 'hero', isHero: true };
-    return [hero].concat(state.formation.map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
+    return [hero].concat(state.formation.slice(0, 5).map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
   }
 
   // ---------- 法宝 ----------
@@ -1440,7 +1455,8 @@ code.num { font-family: Consolas, monospace; }
       return false;
     }
 
-    for (round = 1; round <= (opts.maxRounds || 60); round++) {
+    for (round = 1; round <= (opts.maxRounds || 30); round++) {
+      push('—— 第 ' + round + ' 回合 ——', 'bl-turn');
       for (const u of order) {
         if (u.hp <= 0) continue;
         // 控制判定
@@ -1544,10 +1560,11 @@ code.num { font-family: Consolas, monospace; }
       if (allyAlive === 0) { winner = 'enemy'; break; }
     }
     if (!winner) {
-      const allyAlive = alive('ally'), enemyAlive = alive('enemy');
-      winner = enemyAlive.length >= allyAlive.length ? 'enemy' : 'ally';
+      const ea = alive('enemy').length, aa = alive('ally').length;
+      winner = ea >= aa ? 'enemy' : 'ally';
     }
-    return { winner, log, rounds: round };
+    const timeout = winner !== 'ally' && alive('enemy').length > 0 && alive('ally').length > 0;
+    return { winner, log, rounds: Math.min(round, opts.maxRounds || 30), timeout };
   }
 
   // ---------- 主线 ----------
@@ -1563,7 +1580,7 @@ code.num { font-family: Consolas, monospace; }
     const stage = state.mainline.stage;
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
     const enemyUnits = enemyForStage(stage);
-    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 60 });
+    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
       state.res.xiuwei += rw.xiuwei;
@@ -1581,6 +1598,11 @@ code.num { font-family: Consolas, monospace; }
       state.mainline.stage++;
       return { ok: true, stage, reward: rw, res };
     }
+    if (res.timeout) {
+      // 30 回合内未击破敌人：挑战失败，退回上一关
+      state.mainline.stage = Math.max(1, state.mainline.stage - 1);
+      if (cb) cb({ msg: '30 回合未击破敌人，挑战失败，退回上一关！', cls: 'system' });
+    }
     return { ok: false, stage, res };
   }
 
@@ -1597,7 +1619,7 @@ code.num { font-family: Consolas, monospace; }
     const budget = teamPower(state) * (1.25 + bossLv * 0.08);
     const b = enemyGroupByPower(budget, { boss: true, count: 1, name: '洞天魔尊·' + bossLv + '阶', spd: 110 });
     const playerUnits = formationUnits(state).map(x => buildPlayerUnit(state, x.iid)).filter(Boolean);
-    const res = simulateBattle(playerUnits, b, cb, { maxRounds: 80 });
+    const res = simulateBattle(playerUnits, b, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const fragName = pick(Object.keys(P.FABAO));
       const f = P.FABAO[fragName];
@@ -1625,7 +1647,7 @@ code.num { font-family: Consolas, monospace; }
     const budget = teamPower(state) * (1.2 + stage * 0.03);
     const bArr = enemyGroupByPower(budget, { boss: true, count: 3, el: enemyEl, name: '五行妖灵·' + P.ELEM_NAME[enemyEl], minion: '五行妖灵', spd: 100 + stage * 2 });
     const playerUnits = formationUnits(state).map(x => buildPlayerUnit(state, x.iid)).filter(Boolean);
-    const res = simulateBattle(playerUnits, bArr, cb, { maxRounds: 60 });
+    const res = simulateBattle(playerUnits, bArr, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       state.dungeons.wuxing.bestStage = stage;
       state.res.wuxing += 15 + stage * 3;
@@ -1732,7 +1754,7 @@ code.num { font-family: Consolas, monospace; }
   const S = {
     game: null, tab: 'main', race: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true,
+    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0,
     lastPush: 0
   };
 
@@ -1910,7 +1932,48 @@ code.num { font-family: Consolas, monospace; }
     const race = RACE[g.race];
     const eleOpt = DATA.ELEMENTS.map(e =>
       '<option value="' + e + '"' + (e === heroEl ? ' selected' : '') + '>' + e + '</option>').join('');
+    // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
+    const heroNm = g.heroName || race.name + '道友';
+    const pu = C.formationUnits(g);
+    const slotHtml = (nm, tag, color, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '"><div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
+    let ph = '';
+    pu.forEach(u => {
+      if (u.isHero) ph += slotHtml(heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
+    });
+    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty">空位</div>';
+    const enemies = C.enemyForStage(stage);
+    let eh = '';
+    enemies.forEach(en => { eh += slotHtml(en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
+    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty">空位</div>';
     v.innerHTML = `
+      <div class="stat-top">
+        <span class="st-name"><span class="ico">✧</span>${heroNm}</span>
+        <span class="st-res"><span class="ico">◈</span>铜钱 <b>${F(g.res.copper)}</b></span>
+        <span class="st-res"><span class="ico">☯</span>修为 <b>${F(g.res.xiuwei)}</b></span>
+        <span class="st-res"><span class="ico">紫</span>紫气 <b>${F(g.res.ziqi)}</b></span>
+      </div>
+
+      <div class="battle-field">
+        <div class="bf-round"><span>${S.battleRounds}/30回合</span></div>
+        <div class="bf-body">
+          <div class="bf-side">${ph}</div>
+          <div class="bf-vs">⚔</div>
+          <div class="bf-side">${eh}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
+        <div class="toolbar">
+          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
+          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
+          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
+        </div>
+        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一关；打不过请升级、养仙府、抽伙伴、渡劫。</div>
+      </div>
+
       <div class="card">
         <div class="row xl">
           <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
@@ -1959,13 +2022,8 @@ code.num { font-family: Consolas, monospace; }
       </div>
 
       <div class="card">
-        <div class="sec-title" style="margin:0">主线·成仙之路 <span class="tag">第 ${stage} 关</span></div>
-        <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
-          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
-        </div>
-        <div class="dim">挂机自动推关直到打不过；打不过请升级、养仙府、抽伙伴、渡劫。</div>
-        <div id="battle-log" class="battle-log mt8"></div>
+        <div class="sec-title" style="margin:0">战报 <span class="tag">第 ${stage} 关</span></div>
+        <div id="battle-log" class="battle-log"></div>
       </div>
     `;
     renderLog('#battle-log', S.logMain);
@@ -2052,8 +2110,8 @@ code.num { font-family: Consolas, monospace; }
       '<div class="toolbar"><button class="btn btn-gold" data-act="sum" data-a="1">单抽（1令/30紫）</button><button class="btn btn-gold" data-act="sum" data-a="10">十连（10令/280紫）</button></div>' +
       '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复伙伴自动进阶★</div></div>';
     // 阵容
-    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/6</span></div><div class="slot-grid">';
-    for (let i = 0; i < 6; i++) {
+    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/5</span></div><div class="slot-grid">';
+    for (let i = 0; i < 5; i++) {
       const iid = g.formation[i];
       if (iid) {
         const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
@@ -2212,11 +2270,12 @@ code.num { font-family: Consolas, monospace; }
     let count = 0;
     for (let i = 0; i < (n || 1); i++) {
       const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
       if (r.ok) {
         count++;
         addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
       } else {
-        addLog('main', '✘ 第 ' + r.stage + ' 关挑战失败，队伍实力不足', 'bl-system');
+        addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，挑战失败，退回第 ' + S.game.mainline.stage + ' 关' : '✘ 第 ' + r.stage + ' 关挑战失败，队伍实力不足', 'bl-system');
         break;
       }
     }
@@ -2259,7 +2318,7 @@ code.num { font-family: Consolas, monospace; }
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else { if (g.formation.length >= 6) { toast('上阵已满'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
+      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5伙伴）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
@@ -2323,9 +2382,12 @@ code.num { font-family: Consolas, monospace; }
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
         const r = C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+        S.battleRounds = (r.res && r.res.rounds) || 0;
         if (r.ok) {
           addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
           C.recomputeStats(g);
+        } else if (r.res && r.res.timeout) {
+          addLog('main', '✘ 30回合未击破，退回第 ' + g.mainline.stage + ' 关', 'bl-system');
         }
       }
     }

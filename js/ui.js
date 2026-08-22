@@ -18,7 +18,7 @@
   const S = {
     game: null, tab: 'main', race: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true,
+    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0,
     lastPush: 0
   };
 
@@ -196,7 +196,48 @@
     const race = RACE[g.race];
     const eleOpt = DATA.ELEMENTS.map(e =>
       '<option value="' + e + '"' + (e === heroEl ? ' selected' : '') + '>' + e + '</option>').join('');
+    // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
+    const heroNm = g.heroName || race.name + '道友';
+    const pu = C.formationUnits(g);
+    const slotHtml = (nm, tag, color, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '"><div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
+    let ph = '';
+    pu.forEach(u => {
+      if (u.isHero) ph += slotHtml(heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
+    });
+    for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty">空位</div>';
+    const enemies = C.enemyForStage(stage);
+    let eh = '';
+    enemies.forEach(en => { eh += slotHtml(en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
+    for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty">空位</div>';
     v.innerHTML = `
+      <div class="stat-top">
+        <span class="st-name"><span class="ico">✧</span>${heroNm}</span>
+        <span class="st-res"><span class="ico">◈</span>铜钱 <b>${F(g.res.copper)}</b></span>
+        <span class="st-res"><span class="ico">☯</span>修为 <b>${F(g.res.xiuwei)}</b></span>
+        <span class="st-res"><span class="ico">紫</span>紫气 <b>${F(g.res.ziqi)}</b></span>
+      </div>
+
+      <div class="battle-field">
+        <div class="bf-round"><span>${S.battleRounds}/30回合</span></div>
+        <div class="bf-body">
+          <div class="bf-side">${ph}</div>
+          <div class="bf-vs">⚔</div>
+          <div class="bf-side">${eh}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
+        <div class="toolbar">
+          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
+          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
+          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
+        </div>
+        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一关；打不过请升级、养仙府、抽伙伴、渡劫。</div>
+      </div>
+
       <div class="card">
         <div class="row xl">
           <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
@@ -245,13 +286,8 @@
       </div>
 
       <div class="card">
-        <div class="sec-title" style="margin:0">主线·成仙之路 <span class="tag">第 ${stage} 关</span></div>
-        <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战当前关（${stage}）</button>
-          <button class="btn btn-sm" data-act="pushx10">连打10次</button>
-        </div>
-        <div class="dim">挂机自动推关直到打不过；打不过请升级、养仙府、抽伙伴、渡劫。</div>
-        <div id="battle-log" class="battle-log mt8"></div>
+        <div class="sec-title" style="margin:0">战报 <span class="tag">第 ${stage} 关</span></div>
+        <div id="battle-log" class="battle-log"></div>
       </div>
     `;
     renderLog('#battle-log', S.logMain);
@@ -338,8 +374,8 @@
       '<div class="toolbar"><button class="btn btn-gold" data-act="sum" data-a="1">单抽（1令/30紫）</button><button class="btn btn-gold" data-act="sum" data-a="10">十连（10令/280紫）</button></div>' +
       '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复伙伴自动进阶★</div></div>';
     // 阵容
-    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/6</span></div><div class="slot-grid">';
-    for (let i = 0; i < 6; i++) {
+    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/5</span></div><div class="slot-grid">';
+    for (let i = 0; i < 5; i++) {
       const iid = g.formation[i];
       if (iid) {
         const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
@@ -498,11 +534,12 @@
     let count = 0;
     for (let i = 0; i < (n || 1); i++) {
       const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
       if (r.ok) {
         count++;
         addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
       } else {
-        addLog('main', '✘ 第 ' + r.stage + ' 关挑战失败，队伍实力不足', 'bl-system');
+        addLog('main', (r.res && r.res.timeout) ? '✘ 30回合未击破敌人，挑战失败，退回第 ' + S.game.mainline.stage + ' 关' : '✘ 第 ' + r.stage + ' 关挑战失败，队伍实力不足', 'bl-system');
         break;
       }
     }
@@ -545,7 +582,7 @@
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else { if (g.formation.length >= 6) { toast('上阵已满'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
+      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5伙伴）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
@@ -609,9 +646,12 @@
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
         const r = C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+        S.battleRounds = (r.res && r.res.rounds) || 0;
         if (r.ok) {
           addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
           C.recomputeStats(g);
+        } else if (r.res && r.res.timeout) {
+          addLog('main', '✘ 30回合未击破，退回第 ' + g.mainline.stage + ' 关', 'bl-system');
         }
       }
     }
