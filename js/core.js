@@ -1047,12 +1047,10 @@
       state.mainline.stage++;
       return { ok: true, stage, reward: rw, res };
     }
-    if (res.timeout) {
-      // 30 回合内未击破敌人：挑战失败，退回上一关
-      state.mainline.stage = Math.max(1, state.mainline.stage - 1);
-      if (cb) cb({ msg: '30 回合未击破敌人，挑战失败，退回上一关！', cls: 'system' });
-    }
-    return { ok: false, stage, res };
+    // 挑战失败（被击败 或 30回合未击破）：退回上一层自动挂机
+    state.mainline.stage = Math.max(1, state.mainline.stage - 1);
+    if (cb) cb({ msg: (res.timeout ? '30 回合未击破敌人' : '队伍被击败') + '，挑战失败，退回第 ' + state.mainline.stage + ' 关自动挂机！', cls: 'system' });
+    return { ok: false, stage, res, retreated: true };
   }
 
   // ---------- 水月洞天 ----------
