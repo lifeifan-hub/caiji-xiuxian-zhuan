@@ -104,6 +104,8 @@
   function renderHeader() {
     const g = S.game;
     if (!g) return;
+    const nameEl = $('#hero-name-hdr');
+    if (nameEl) nameEl.textContent = '｜' + (g.heroName || RACE[g.race].name + '道友');
     $('#realm-tag').textContent = C.realmLabel(g) + ' · 战力' + F(C.teamPower(g));
     const res = g.res;
     $('#resbar').innerHTML =
@@ -113,7 +115,6 @@
       '<div class="res"><span class="ico">灵</span>灵气<b>' + F(res.lingqi) + '</b></div>' +
       '<div class="res"><span class="ico">紫</span>紫气<b>' + F(res.ziqi) + '</b></div>' +
       '<div class="res"><span class="ico">行</span>五行<b>' + F(res.wuxing) + '</b></div>';
-    $('#stamline').textContent = '体力 ' + Math.floor(res.stamina) + '/' + DATA.STAMINA_MAX + ' · 离线上限12小时';
   }
 
   // ---------- 导航 ----------
@@ -183,6 +184,15 @@
   }
 
   // ---------- 主页 / 修仙 ----------
+  function stageRealm(stage) {
+    const tiers = [[30, '炼气'], [70, '筑基'], [120, '金丹'], [180, '元婴'], [250, '化神'], [330, '炼虚'], [430, '合体'], [560, '大乘'], [Infinity, '渡劫']];
+    let t = 0;
+    for (let i = 0; i < tiers.length; i++) { if (stage <= tiers[i][0]) { t = i; break; } t = i; }
+    const layers = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    const l = layers[Math.max(0, Math.min(8, Math.floor(stage % 9)))] || '一';
+    return tiers[t][1] + '·' + l + '层';
+  }
+
   function renderMain(v) {
     const g = S.game;
     const st = C.unitStats(g, 'hero');
@@ -199,27 +209,22 @@
     // 战斗视图：我方站位(角色+伙伴, 最多6格) / 敌方站位(最多6格)
     const heroNm = g.heroName || race.name + '道友';
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, tag, color, hero, boss) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '">' +
-      '<div class="slot-name" style="color:' + color + '">' + nm + '</div><div class="slot-tag">' + tag + '</div></div>';
+    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss) =>
+      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
+      '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
+      '<div class="slot-lv">' + lv + '</div>' +
+      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div></div>';
     let ph = '';
     pu.forEach((u, i) => {
-      if (u.isHero) ph += slotHtml(0, i, heroNm, race.name + '·' + heroEl, ELEMC[heroEl] || '#fff', true, false);
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); ph += slotHtml(0, i, tpl.name, tpl.el + '·' + ROLES[tpl.role], ELEMC[tpl.el] || '#fff', false, false); }
+      if (u.isHero) { const hps = st ? st.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage);
     let eh = '';
-    enemies.forEach((en, i) => { eh += slotHtml(1, i, en.name, (en.boss ? 'BOSS·' : '') + en.element, ELEMC[en.element] || '#fff', false, en.boss); });
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     v.innerHTML = `
-      <div class="stat-top">
-        <span class="st-name"><span class="ico">✧</span>${heroNm}</span>
-        <span class="st-res"><span class="ico">◈</span>铜钱 <b>${F(g.res.copper)}</b></span>
-        <span class="st-res"><span class="ico">☯</span>修为 <b>${F(g.res.xiuwei)}</b></span>
-        <span class="st-res"><span class="ico">紫</span>紫气 <b>${F(g.res.ziqi)}</b></span>
-      </div>
-
       <div class="battle-field">
         <div class="bf-round"><span>${S.battleRounds}/30回合</span></div>
         <div class="bf-body">
@@ -346,7 +351,7 @@
         html += '<div class="shop-item"><span>' + dn + ' <span class="dim">(持有 ' + (g.items[dn] || 0) + ')</span></span><span><span class="price">灵气' + cost + '</span> <button class="btn btn-sm btn-blue" data-act="alc" data-a="' + dn + '">炼制</button></span></div>';
       });
       html += '<div class="sec-title" style="margin:12px 0 4px">背包道具</div>';
-      ['聚元丹', '聚灵丹', '醒神丹'].forEach(dn => {
+      ['聚元丹', '聚灵丹'].forEach(dn => {
         if ((g.items[dn] || 0) > 0) html += '<div class="shop-item"><span>' + dn + ' ×' + g.items[dn] + '</span><button class="btn btn-sm btn-blue" data-act="use" data-a="' + dn + '">使用</button></div>';
       });
     } else if (show === 'qi') {
@@ -470,9 +475,9 @@
     // 主线
     html += '<div class="card"><div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ' + g.mainline.stage + ' 关</span></div><div class="dim mt8">无限爬塔推关；打不过就回仙府/副本提升实力。</div><div class="toolbar"><button class="btn btn-gold btn-sm" data-act="push">挑战</button></div></div>';
     // 水月洞天
-    html += '<div class="card"><div class="row"><div><b class="blue">水月洞天</b> <span class="dim">打boss刷法宝碎片+紫气</span></div></div><div class="row mt8"><span class="muted">当前首领 ' + (d.shuiyue.bestBoss || 0) + ' 阶 · 体力-10</span><button class="btn btn-sm btn-blue" data-act="dungeon" data-a="shuiyue">挑战</button></div></div>';
+    html += '<div class="card"><div class="row"><div><b class="blue">水月洞天</b> <span class="dim">打boss刷法宝碎片+紫气</span></div></div><div class="row mt8"><span class="muted">当前首领 ' + (d.shuiyue.bestBoss || 0) + ' 阶</span><button class="btn btn-sm btn-blue" data-act="dungeon" data-a="shuiyue">挑战</button></div></div>';
     // 五行山
-    html += '<div class="card"><div class="row"><div><b class="purple">五行山挑战</b> <span class="dim">五行克制副本，拿五行材料</span></div></div><div class="row mt8"><span class="muted">已通 ' + d.wuxing.bestStage + '/20 层 · 体力-10</span><button class="btn btn-sm btn-blue" data-act="dungeon" data-a="wuxing">挑战</button></div><div class="dim">敌人五行克制我方，记得切换主力五行属性！</div></div>';
+    html += '<div class="card"><div class="row"><div><b class="purple">五行山挑战</b> <span class="dim">五行克制副本，拿五行材料</span></div></div><div class="row mt8"><span class="muted">已通 ' + d.wuxing.bestStage + '/20 层</span><button class="btn btn-sm btn-blue" data-act="dungeon" data-a="wuxing">挑战</button></div><div class="dim">敌人五行克制我方，记得切换主力五行属性！</div></div>';
     // 日常
     html += '<div class="sec-title">每日副本（扫荡）</div>';
     DATA.DAILY.forEach(dd => {
@@ -561,6 +566,17 @@
     S.animating = true;
     const roundEl = bf.querySelector('.bf-round');
     const slotEl = (side, idx) => bf.querySelector('[data-side="' + side + '"][data-idx="' + idx + '"]');
+    const adjustHp = (el, delta) => {
+      const mh = parseFloat(el.dataset.maxh) || 1;
+      let cur = parseFloat(el.dataset.hp) || mh;
+      cur = Math.max(0, Math.min(mh, cur + delta));
+      el.dataset.hp = cur;
+      const bar = el.querySelector('.slot-hp i');
+      if (bar) bar.style.width = (cur / mh * 100) + '%';
+      const hpEl = el.querySelector('.slot-hp');
+      if (hpEl) hpEl.classList.toggle('low', (cur / mh) < 0.30);
+      el.classList.toggle('dead', cur <= 0);
+    };
     for (const ev of events) {
       if (ev.type === 'round') { if (roundEl) roundEl.textContent = ev.n + '/30回合'; await sleep(150); continue; }
       const aSide = ev.team === 'ally' ? 0 : 1;
@@ -570,8 +586,8 @@
         const tSide = t.team === 'ally' ? 0 : 1;
         const tEl = slotEl(tSide, t.idx);
         if (!tEl) return;
-        if (ev.type === 'dmg') popDamage(tEl, '-' + F(t.dmg), t.crit, false);
-        else if (ev.type === 'heal') popDamage(tEl, '+' + F(t.amount), false, true);
+        if (ev.type === 'dmg') { popDamage(tEl, '-' + F(t.dmg), t.crit, false); adjustHp(tEl, -t.dmg); }
+        else if (ev.type === 'heal') { popDamage(tEl, '+' + F(t.amount), false, true); adjustHp(tEl, t.amount); }
       });
       if (ev.type === 'buff' && aEl) { aEl.classList.add('buff-flash'); setTimeout(() => aEl.classList.remove('buff-flash'), 450); }
       await sleep(330);
