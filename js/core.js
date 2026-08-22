@@ -40,7 +40,7 @@
 
   // ---------- 状态 ----------
   function freshStats() {
-    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0, stamina: 100 };
+    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0 };
   }
 
   function newGame(race) {
@@ -360,8 +360,6 @@
     const elapsed = clamp((now - state.lastTick) / 1000, 0, 3600); // 在线最多按1小时结算，离线单独算
     applyGain(state, elapsed);
     state.lastTick = now;
-    // 体力回复
-    state.res.stamina = clamp(state.res.stamina + elapsed / 60 * P.STAMINA_REGEN_MIN, 0, P.STAMINA_MAX);
     recomputeStats(state);
     return state;
   }
@@ -1064,9 +1062,6 @@
   }
   function challengeShuiyue(state, cb) {
     const bossLv = state.dungeons.shuiyue.bestBoss + 1;
-    const cost = 10;
-    if (state.res.stamina < cost) return { ok:false, res:null, msg:'体力不足' };
-    state.res.stamina -= cost;
     const budget = teamPower(state) * (1.25 + bossLv * 0.08);
     const b = enemyGroupByPower(budget, { boss: true, count: 1, name: '洞天魔尊·' + bossLv + '阶', spd: 110 });
     const playerUnits = formationUnits(state).map(x => buildPlayerUnit(state, x.iid)).filter(Boolean);
@@ -1090,9 +1085,6 @@
   }
   function challengeWuxing(state, cb) {
     const stage = wuxingStage(state);
-    const cost = 10;
-    if (state.res.stamina < cost) return { ok:false, res:null, msg:'体力不足' };
-    state.res.stamina -= cost;
     // 五行山：敌人元素克制我方（若我方有克制它的元素则优势）
     const enemyEl = ELEMENTS[(stage + 1) % 5];
     const budget = teamPower(state) * (1.2 + stage * 0.03);
@@ -1136,7 +1128,6 @@
     takeItem(state, name, 1);
     if (name === '聚元丹') { const r = rates(state); const g = r.xiuwei * 3600; state.res.xiuwei += g; return { ok:true, msg:'修为 +' + fmt(g) }; }
     if (name === '聚灵丹') { state.res.lingqi += 500; return { ok:true, msg:'灵气 +500' }; }
-    if (name === '醒神丹') { state.res.stamina = clamp(state.res.stamina + 30, 0, P.STAMINA_MAX); return { ok:true, msg:'体力 +30' }; }
     if (name === '渡劫丹') return { ok:true, msg:'渡劫丹留待渡劫使用' };
     return { ok:false, msg:'暂不可用' };
   }
