@@ -194,6 +194,8 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot-hp i { display: block; height: 100%; background: linear-gradient(90deg, #6fd97f, #3fae52); transition: width .15s; }
 .slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
 .slot-hp.low i { background: linear-gradient(90deg, #ffb04a, #e0663f); }
+.slot-energy { width: 66%; height: 4px; background: rgba(0,0,0,.45); border-radius: 999px; margin-top: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,.06); }
+.slot-energy i { display: block; height: 100%; background: linear-gradient(90deg, #7fb8ff, #c9a0ff); transition: width .15s; }
 .slot.dead { opacity: .38; filter: grayscale(.6); }
 .bf-result { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; z-index: 9; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.8); animation: bfpop .5s ease-out; }
 .bf-result.win { color: var(--gold2); }
