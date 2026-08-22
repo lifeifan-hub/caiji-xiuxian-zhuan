@@ -13,6 +13,7 @@
   const QMAP = P.QMAP;
   const REALMS = P.REALMS;
   const MAX_REALM = P.MAX_REALM;
+  const MAX_LAYER = 20; // 每个大境界 20 个小境界
 
   const SAVE_KEY = 'caiji_xiuxian_save_v1';
   const OFFLINE_CAP = 12 * 3600; // 离线上限 12 小时
@@ -166,7 +167,7 @@
   // 计算一个单位的最终属性（含装备/法宝/仙府/聚灵阵加成）
   function unitStats(state, key) {
     const s = state;
-    const realmMult = REALMS[s.realm.idx].mult * (1 + (s.realm.layer - 1) * 0.06);
+    const realmMult = REALMS[s.realm.idx].mult * (1 + (s.realm.layer - 1) * 0.03);
     const lm = lingmaiMult(s.manor.lingmai);
     const linggenPct = s.manor.linggen * 3; // 每级3%
     const julingPct = julingBonus(s);
@@ -633,10 +634,10 @@
   function layerCost(state) {
     const idx = state.realm.idx, layer = state.realm.layer;
     const mult = REALMS[idx].mult;
-    return Math.round(150 * Math.pow(mult, 1.3) * Math.pow(layer, 1.6));
+    return Math.round(120 * Math.pow(mult, 1.2) * Math.pow(layer, 1.5));
   }
   function breakthroughLayer(state) {
-    if (state.realm.layer >= 9) return { ok: false, msg: '已圆满，请渡劫' };
+    if (state.realm.layer >= MAX_LAYER) return { ok: false, msg: '已圆满，请渡劫' };
     const cost = layerCost(state);
     if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
     state.res.xiuwei -= cost;
@@ -646,29 +647,36 @@
     return { ok: true, msg: '突破 ' + REALMS[state.realm.idx].name + '·' + layerName(state.realm.layer) + ' 层成功！' };
   }
   function layerName(layer) {
-    const layers = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
-    return layers[layer - 1];
+    const layers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十'];
+    return layers[Math.max(0, Math.min(layers.length - 1, layer - 1))];
   }
   function realmLabel(state) {
     const r = REALMS[state.realm.idx];
     return r.name + '·' + layerName(state.realm.layer) + '层';
   }
+  function tribulationCost(state) {
+    const idx = state.realm.idx;
+    const mult = REALMS[idx].mult;
+    return Math.round(1600 * Math.pow(mult, 1.2) * (1 + idx * 0.3));
+  }
   function tribulationInfo(state) {
-    if (state.realm.layer < 9) return { maxed: false };
-    const baseChance = 0.55;
+    if (state.realm.layer < MAX_LAYER) return { maxed: false };
+    const idx = state.realm.idx;
+    const baseChance = clamp(0.72 - idx * 0.05, 0.18, 0.72); // 境界越高成功率越低
     const pills = state.items['渡劫丹'] || 0;
     const chance = clamp(baseChance + Math.min(pills, 6) * 0.08, 0, 0.99);
-    return { maxed: true, chance, pills };
+    return { maxed: true, chance, pills, baseChance, cost: tribulationCost(state) };
   }
   function tribulate(state, usePill) {
     const info = tribulationInfo(state);
     if (!info.maxed) return { ok:false, msg:'当前境界未圆满，无需渡劫' };
+    if (state.res.xiuwei < info.cost) return { ok:false, msg:'修为不足，渡劫需 ' + fmt(info.cost) + ' 修为' };
+    state.res.xiuwei -= info.cost; // 渡劫消耗修为
     if (usePill && info.pills > 0) { takeItem(state, '渡劫丹', 1); }
-    const chance = info.chance + (usePill && info.pills > 0 ? 0 : 0);
     const success = Math.random() < info.chance;
     if (success) {
       if (state.realm.idx >= MAX_REALM) {
-        state.realm.idx = MAX_REALM; state.realm.layer = 9;
+        state.realm.idx = MAX_REALM; state.realm.layer = MAX_LAYER;
         return { ok:true, msg:'已证道成仙（大圆满）', ascended:true };
       }
       state.realm.idx++;
@@ -681,9 +689,10 @@
       return { ok:true, msg:'渡劫成功！突破至' + REALMS[state.realm.idx].name + '！', gift };
     } else {
       state.realm.fails++;
-      const lost = state.res.xiuwei * 0.10;
+      const pct = 10 + state.realm.idx * 2; // 失败损失修为%，境界越高越高
+      const lost = state.res.xiuwei * pct / 100;
       state.res.xiuwei -= lost;
-      return { ok:false, msg:'渡劫失败…损失10%修为（' + fmt(lost) + '）。可备渡劫丹提升成功率。', lost };
+      return { ok:false, msg:'渡劫失败…损失' + pct + '%修为（-' + fmt(lost) + '）。境界越高成功率越低、损失越大；备渡劫丹可提升成功率。', lost, pct };
     }
   }
 
@@ -1157,6 +1166,7 @@
     newGame, hasSave, load, save, wipe, exportSave, importSave,
     tick, offlineGains, rates, applyGain, recomputeStats, unitStats,
     realmLabel, tribulationInfo, tribulate,
+    tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
     summon, summonOne, upgradePartner, levelCost,
