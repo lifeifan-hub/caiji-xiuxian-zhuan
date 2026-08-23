@@ -41,7 +41,7 @@
 
   // ---------- 状态 ----------
   function freshStats() {
-    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0 };
+    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0, fabao: 0 };
   }
 
   function newGame(race) {
@@ -145,6 +145,9 @@
     if (!state) return state;
     state.mainline = state.mainline || { stage: 1 };
     if (state.mainline.cleared == null) state.mainline.cleared = Math.max(0, (state.mainline.stage || 1) - 1);
+    state.res = state.res || {};
+    if (state.res.fabao == null) state.res.fabao = 0;
+    if (state.res.qiongjiang == null) state.res.qiongjiang = 0;
     return state;
   }
 
@@ -746,6 +749,7 @@
     if (item === '金卡伙伴包') { summonOne(state, null, 4); return; }
     if (item === '红卡伙伴包') { summonOne(state, null, 5); return; }
     if (item === '仙品装备箱' || item === '五行装备箱') { const e = genEquip(state, item === '仙品装备箱' ? 3 : 3); state.equipment.push(e); return; }
+    if (item === '随机法宝') { const fid = pick(Object.keys(P.FABAO)); const ex = state.fabao.find(x => x.id === fid); if (ex) ex.count++; else state.fabao.push({ id: fid, count: 1 }); return; }
     addItem(state, item, good.qty || 1);
   }
 
@@ -1192,7 +1196,8 @@
       let drop = 1 + (state.dungeons.shuiyue.bestBoss / 5 | 0);
       state.dungeons.shuiyue.bestBoss = bossLv;
       state.res.ziqi += 10 + bossLv * 2;
-      if (cb) cb({ msg: '击败洞天魔尊！获得『' + f.name + '碎片×2』与鸿蒙紫气！', cls: 'loot' });
+      state.res.fabao += 3 + bossLv * 2;
+      if (cb) cb({ msg: '击败洞天魔尊！获得『' + f.name + '碎片×2』、法宝碎片+' + (3 + bossLv * 2) + ' 与鸿蒙紫气！', cls: 'loot' });
       return { ok:true, res };
     }
     return { ok:false, res };
