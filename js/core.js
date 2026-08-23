@@ -67,7 +67,7 @@
       manor: { zuiyue: 1, lingmai: 0, linggen: 1, fazhen: 1, juling: 0, gongfa: 0, qiankun: 1 },
       gongfa: 0,      // 已研习功法层数
       skills: ['basic'], // 主角已掌握技能 id
-      mainline: { stage: 1 },
+      mainline: { stage: 1, cleared: 0 },
       dungeons: {
         shuiyue: { bestBoss: 0 },
         wuxing: { bestStage: 0 },
@@ -131,7 +131,7 @@
     try {
       if (typeof localStorage === 'undefined') return null;
       const raw = localStorage.getItem(SAVE_KEY);
-      return raw ? JSON.parse(raw) : null;
+      return raw ? normalizeState(JSON.parse(raw)) : null;
     } catch (e) { return null; }
   }
   function wipe() {
@@ -139,7 +139,13 @@
   }
   function exportSave(state) { return btoa(encodeURIComponent(JSON.stringify(state))); }
   function importSave(str) {
-    try { return JSON.parse(decodeURIComponent(atob(str))); } catch (e) { return null; }
+    try { return normalizeState(JSON.parse(decodeURIComponent(atob(str)))); } catch (e) { return null; }
+  }
+  function normalizeState(state) {
+    if (!state) return state;
+    state.mainline = state.mainline || { stage: 1 };
+    if (state.mainline.cleared == null) state.mainline.cleared = Math.max(0, (state.mainline.stage || 1) - 1);
+    return state;
   }
 
   // ---------- 数据查询 ----------
@@ -798,6 +804,7 @@
   function buildEnemyUnit(e) {
     return {
       name: e.name, element: e.el, role: e.role || 'atk', team: 'enemy', boss: !!e.boss,
+      q: e.q || 2, qName: e.qName || '',
       maxHp: e.hp, hp: e.hp, atk: e.atk, def: e.def, spd: e.spd,
       crit: e.crit || 0.05, critDmg: e.critDmg || 0, heal: 0, elementDmg: 0,
       ctrlAcc: 0, silImmune: !!e.silImmune,
@@ -806,25 +813,28 @@
     };
   }
 
-  function makeEnemies(stage) {
+  function makeEnemies(stage, firstClear) {
     const s = stage;
     const targetPower = 760 * Math.pow(1.035, s - 1);
-    const count = Math.min(5, 3 + Math.floor(s / 15));
-    const boss = s % 10 === 0;
+    // 首次推到：1 只红色首领 + 5 只绿/蓝/紫小怪；通关后再打此关不带红色首领，仅绿/蓝/紫
+    const count = firstClear ? 6 : Math.min(5, 3 + Math.floor(s / 15));
     const arr = [];
     for (let i = 0; i < count; i++) {
+      const isBoss = firstClear && i === 0;
       let share = targetPower / count;
-      if (boss && i === 0) share *= 1.8;
+      if (isBoss) share *= 2.2;
       const el = ELEMENTS[(i + s) % 5];
+      const q = isBoss ? 5 : [1, 2, 3][(i + s) % 3];
+      const qName = isBoss ? '红' : ['绿', '蓝', '紫'][(i + s) % 3];
       arr.push(buildEnemyUnit({
-        name: ['蛮兽', '山精', '魔修', '邪祟', '鬼将', '妖王', '心魔', '冥卫'][(i + s) % 8] + (boss && i === 0 ? '·首领' : ''),
-        el, boss: boss && i === 0, role: i % 3 === 0 ? 'tank' : 'atk',
+        name: ['蛮兽', '山精', '魔修', '邪祟', '鬼将', '妖王', '心魔', '冥卫'][(i + s) % 8] + (isBoss ? '·赤尊' : ''),
+        el, q, qName, boss: isBoss, role: i % 3 === 0 ? 'tank' : 'atk',
         hp: Math.round(share * 0.42),
         atk: Math.round(share * 0.10),
         def: Math.round(share * 0.06),
         spd: 90 + Math.min(130, s * 1.2) + i * 6,
         crit: 0.05 + s * 0.002, critDmg: 0,
-        silImmune: (boss && i === 0) ? Math.random() < 0.45 : false,
+        silImmune: isBoss ? (Math.random() < 0.5) : false,
         skills: [
           { name: '妖风', type: 'dmg', mult: 1.6, cd: 2, target: 'one' },
           { name: '重击', type: 'dmg', mult: 2.0, cd: 3, target: 'one' }
@@ -1097,7 +1107,7 @@
   }
 
   // ---------- 主线 ----------
-  function enemyForStage(stage) { return makeEnemies(stage); }
+  function enemyForStage(stage, firstClear) { return makeEnemies(stage, firstClear); }
   function stageReward(state) {
     const s = state.mainline.stage;
     const base = rates(state);
@@ -1107,8 +1117,9 @@
   }
   function challengeMainline(state, cb) {
     const stage = state.mainline.stage;
+    const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage);
+    const enemyUnits = enemyForStage(stage, firstClear);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
@@ -1124,6 +1135,7 @@
         state.equipment.push(e);
         if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
       }
+      state.mainline.cleared = Math.max(state.mainline.cleared || 0, stage);
       state.mainline.stage++;
       return { ok: true, stage, reward: rw, res };
     }
@@ -1136,8 +1148,9 @@
   // 挂机当前关卡：胜利只拿奖励不推进；打不过则退回上一层继续挂机
   function farmMainline(state, cb) {
     const stage = state.mainline.stage;
+    const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage);
+    const enemyUnits = enemyForStage(stage, firstClear);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
@@ -1153,6 +1166,7 @@
         state.equipment.push(e);
         if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
       }
+      state.mainline.cleared = Math.max(state.mainline.cleared || 0, stage);
       return { ok: true, stage, reward: rw, res, farmed: true };
     }
     state.mainline.stage = Math.max(1, state.mainline.stage - 1);
