@@ -520,7 +520,7 @@
     Object.keys(shops).forEach(k => { html += '<button class="btn ' + (S.shop === k ? 'btn-gold' : '') + '" data-act="shop" data-a="' + k + '">' + shops[k].name + '</button>'; });
     html += '</div>';
     const shop = shops[S.shop];
-    const curName = { copper: '铜钱', ziqi: '鸿蒙紫气', wuxing: '五行币' }[shop.currency];
+    const curName = { copper: '铜钱', ziqi: '鸿蒙紫气', wuxing: '五行币', qiongjiang: '琼浆玉液', fabao: '法宝碎片' }[shop.currency];
     html += '<div class="card"><div class="row"><div><b class="gold">' + shop.name + '</b></div><span class="muted">持有 <b class="gold">' + F(g.res[shop.currency]) + '</b> ' + curName + '</span></div></div>';
     shop.goods.forEach(gd => {
       const limitStr = gd.limit ? '（限购' + gd.limit + '）' : '';
