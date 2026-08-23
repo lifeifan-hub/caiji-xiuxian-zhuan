@@ -159,10 +159,10 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 @keyframes tcshock { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.1); } 16% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(9); } }
 .tc-streaks i { position: absolute; bottom: -12vh; width: 2px; height: 54px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(215,238,255,.95)); animation: tcstreak 1.4s ease-out forwards; }
 @keyframes tcstreak { from { transform: translateY(8vh); opacity: 1; } to { transform: translateY(-125vh); opacity: .2; } }
-.tc-text { position: absolute; top: 13%; width: 100%; text-align: center; z-index: 6; animation: tctext 9s ease forwards; }
+.tc-text { position: absolute; top: 13%; width: 100%; text-align: center; z-index: 6; opacity: 0; animation: tctext 1.9s ease-out 6.9s forwards; }
 .tc-title { font-size: 42px; font-weight: 900; letter-spacing: 6px; color: var(--gold2); text-shadow: 0 0 22px rgba(255,220,120,.9), 0 2px 6px #000; }
 .tc-sub { margin-top: 8px; font-size: 16px; color: #dbe6ff; letter-spacing: 3px; text-shadow: 0 0 10px rgba(120,160,255,.7); }
-@keyframes tctext { 0% { opacity: 0; transform: translateY(-10px); } 6% { opacity: 1; transform: translateY(0); } 87% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tctext { 0% { opacity: 0; transform: scale(.5); filter: blur(8px); } 55% { opacity: .7; } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
 
 /* 伙伴卡 */
 .partner-card { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 9px; background: rgba(23,17,48,.55); margin-bottom: 8px; cursor: pointer; }
