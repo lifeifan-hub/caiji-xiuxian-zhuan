@@ -131,9 +131,9 @@
   const NAV = [
     { id: 'main', ico: '友', name: '道友' },
     { id: 'manor', ico: '府', name: '仙府' },
+    { id: 'dimension', ico: '次', name: '次元空间' },
     { id: 'dungeon', ico: '战', name: '副本' },
     { id: 'shop', ico: '市', name: '仙宝阁' },
-    { id: 'dimension', ico: '次', name: '次元空间' },
     { id: 'settings', ico: '⋯', name: '更多' }
   ];
   function buildNav() {
