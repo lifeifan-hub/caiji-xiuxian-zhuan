@@ -18,7 +18,7 @@
   const S = {
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0, animating: false,
+    logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
 
@@ -211,8 +211,15 @@
     let eh = '';
     enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
-    return '<div class="battle-field"><div class="bf-round"><span>' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
-      '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div></div>';
+    const autoUnlocked = stage >= 30;
+    const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
+      (S.autoPush ? ' checked' : '') + (autoUnlocked ? '' : ' disabled') + '> 自动推关' +
+      (autoUnlocked ? '' : '<small>(30关解锁)</small>') + '</span>';
+    return '<div class="battle-field"><div class="bf-round"><span>第 ' + stage + ' 关 · ' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
+      '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div>' +
+      '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm" data-act="formation">🔀 布阵</button></div>' +
+      '<div class="bf-mid">' + autoHtml + '</div>' +
+      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>';
   }
 
   function render() {
@@ -251,15 +258,6 @@
     // 角色卡
     const race = RACE[g.race];
     v.innerHTML = `
-      <div class="card">
-        <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
-        <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战下一层（${stage}）</button>
-          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
-        </div>
-        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一层自动挂机；按速度先后出手，全员出手一次算一回合。</div>
-      </div>
-
       <div class="card">
         <div class="row xl">
           <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
@@ -302,7 +300,6 @@
         </div>
         <div class="row mt8">
           <span class="muted">仙府法阵/境界/关卡越高，挂机越多</span>
-          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关：开' : '自动推关：关'}</button>
         </div>
       </div>
 
@@ -594,7 +591,10 @@
       el.classList.toggle('dead', cur <= 0);
     };
     for (const ev of events) {
-      if (ev.type === 'round') { if (roundEl) roundEl.textContent = ev.n + '/30回合'; await sleep(150); continue; }
+      if (ev.type === 'round') {
+        if (roundEl) roundEl.textContent = '第 ' + (S.battleStage || (S.game && S.game.mainline.stage) || '') + ' 关 · ' + ev.n + '/30回合';
+        await sleep(150); continue;
+      }
       const aSide = ev.team === 'ally' ? 0 : 1;
       const aEl = slotEl(aSide, ev.idx);
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
@@ -652,10 +652,28 @@
       if (S.animating) return;
       const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
       S.battleRounds = (r.res && r.res.rounds) || 0;
+      S.battleStage = r.stage;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
       playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
     },
-    'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
+    'auto': function () {
+      if (S.game.mainline.stage < 30) { toast('自动推关需先通关第30关后解锁'); return; }
+      S.autoPush = !S.autoPush; C.save(S.game); render();
+    },
+    'formation': function () {
+      if (S.animating) return;
+      const g = S.game;
+      const arr = g.formation.slice();
+      for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+      g.formation = arr;
+      C.recomputeStats(g);
+      C.save(g);
+      toast('已随机调整站位，重新开战！');
+      const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
+      S.battleStage = r.stage;
+      playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
+    },
     'cine': function () { playCine(); },
     'layerup': function () {
       const pills = S.game.items['渡劫丹'] || 0;
@@ -752,17 +770,18 @@
     if (!S.game) return;
     const g = S.game;
     C.tick(g, Date.now());
-    // 自动推关
-    if (S.autoPush && !S.animating) {
+    // 自动战斗（第30关起解锁：勾选=推进下一档，未勾选=挂机当前关卡）
+    const autoUnlocked = g.mainline.stage >= 30;
+    if (autoUnlocked && !S.animating) {
       const now = Date.now();
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
-        const r = C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+        const r = S.autoPush
+          ? C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls))
+          : C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
         S.battleRounds = (r.res && r.res.rounds) || 0;
-        if (r.ok) {
-          addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
-          C.recomputeStats(g);
-        }
+        S.battleStage = r.stage;
+        if (r.ok) addLog('main', S.autoPush ? ('✔ 自动通关第 ' + r.stage + ' 关') : ('✔ 挂机通关当前第 ' + r.stage + ' 关'), 'bl-system');
         playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
     }
