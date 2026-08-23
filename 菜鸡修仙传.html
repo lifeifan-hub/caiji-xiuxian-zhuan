@@ -265,6 +265,15 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot.ult { box-shadow: 0 0 14px rgba(201,160,255,.8); border-color: #c9a0ff; }
 .ult-pop { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; color: #ffe27a; text-shadow: 0 1px 3px #000; pointer-events: none; animation: ultUp .7s ease-out forwards; z-index: 8; }
 @keyframes ultUp { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
+.bf-fm { max-width: 96%; margin: 0 auto 12px; }
+.bf-fm-t { font-size: 12px; color: var(--gold); margin-bottom: 6px; }
+.bf-fm-t small { color: var(--dim); }
+.bf-fm-row { display: flex; gap: 5px; }
+.fm-slot { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 4px 2px; text-align: center; background: rgba(0,0,0,.25); cursor: pointer; }
+.fm-slot.filled:hover { border-color: var(--gold); }
+.fm-slot.empty { color: var(--dim); font-size: 11px; cursor: default; border-style: dashed; }
+.fm-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-realm { font-size: 9px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .slot.dead { opacity: .38; filter: grayscale(.6); }
 .bf-result { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; z-index: 9; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.8); animation: bfpop .5s ease-out; }
 .bf-result.win { color: var(--gold2); }
@@ -728,7 +737,7 @@ code.num { font-family: Consolas, monospace; }
     addPartner(state, starter, 1);
     addPartner(state, pickBluePartner(), 1);
     addPartner(state, pickBluePartner(), 1);
-    state.formation = state.partners.map(p => p.iid);
+    state.formation = ['hero'].concat(state.partners.map(p => p.iid)).slice(0, 6);
     recomputeStats(state);
     return state;
   }
@@ -794,6 +803,8 @@ code.num { font-family: Consolas, monospace; }
     (state.partners || []).forEach(p => {
       if (!p.realm) p.realm = { idx: Math.min(8, Math.floor((p.level - 1) / 15)), layer: Math.max(1, 1 + Math.floor(((p.level - 1) % 15) * 19 / 15)) };
     });
+    state.formation = state.formation || [];
+    if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
     return state;
   }
 
@@ -1175,13 +1186,14 @@ code.num { font-family: Consolas, monospace; }
     const mult = REALMS[p.realm.idx].mult;
     return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(p.realm.layer, 2.2));
   }
-  function partnerTribulate(state, iid) {
+  function partnerTribulate(state, iid, usePill) {
     const p = state.partners.find(x => x.iid === iid);
     if (!p) return { ok: false, msg: '道友不存在' };
     const idx = p.realm.idx, layer = p.realm.layer;
     const cost = partnerLayerCost(p);
     if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
-    const chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    let chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    if (usePill && (state.items['渡劫丹'] || 0) > 0) { takeItem(state, '渡劫丹', 1); chance = clamp(chance + 0.08, 0, 0.99); }
     const success = Math.random() < chance;
     if (success) {
       state.res.xiuwei -= cost;
@@ -1198,7 +1210,7 @@ code.num { font-family: Consolas, monospace; }
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
-    state.formation = ids.slice(0, 5);
+    state.formation = ids.slice(0, 6);
     // 从聚灵阵移除 & 反向
     state.formation.forEach(id => { if (state.juling.includes(id)) state.juling = state.juling.filter(x => x !== id); });
     recomputeStats(state);
@@ -1209,8 +1221,7 @@ code.num { font-family: Consolas, monospace; }
     recomputeStats(state);
   }
   function formationUnits(state) {
-    const hero = { iid: 'hero', isHero: true };
-    return [hero].concat(state.formation.slice(0, 5).map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
+    return state.formation.slice(0, 6).map(id => id === 'hero' ? { iid: 'hero', isHero: true } : state.partners.find(p => p.iid === id)).filter(Boolean);
   }
 
   // ---------- 法宝 ----------
@@ -2219,7 +2230,37 @@ code.num { font-family: Consolas, monospace; }
       '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div>' +
       '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm" data-act="formation">🔀 布阵</button></div>' +
       '<div class="bf-mid">' + autoHtml + '</div>' +
-      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>';
+      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>' +
+      formationBoardHtml(g);
+  }
+
+  function formationBoardHtml(g) {
+    const units = C.formationUnits(g);
+    const heroEl = g.heroEl;
+    let row = '';
+    for (let i = 0; i < 6; i++) {
+      const u = units[i];
+      if (u) {
+        let name, realm, color, qBadge = '';
+        if (u.isHero) {
+          const race = RACE[g.race];
+          name = g.heroName || race.name + '道友';
+          realm = C.realmLabel(g);
+          color = ELEMC[heroEl] || '#fff';
+        } else {
+          const p = g.partners.find(x => x.iid === u.iid);
+          const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+          name = tpl.name;
+          realm = C.partnerRealmLabel(p);
+          color = ELEMC[tpl.el] || '#fff';
+          qBadge = '<span class="slot-q" style="color:' + qColor(tpl.q) + '">' + C.colorName(tpl.q) + '</span>';
+        }
+        row += '<div class="fm-slot filled" data-fm="' + u.iid + '"><div class="fm-name" style="color:' + color + '">' + qBadge + name + '</div><div class="fm-realm">' + realm + '</div></div>';
+      } else {
+        row += '<div class="fm-slot empty"><div class="fm-name">空位</div></div>';
+      }
+    }
+    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>点击方块下阵 · 去道友名下阵/上阵</small></div><div class="bf-fm-row">' + row + '</div></div>';
   }
 
   function render() {
@@ -2405,29 +2446,17 @@ code.num { font-family: Consolas, monospace; }
   // ---------- 道友 ----------
   function renderPartner() {
     const g = S.game;
-    let html = '<div class="sec-title">道友·阵容搭配（速度/控制/治疗/五行克制是胜负核心）</div>';
+    let html = '<div class="sec-title">道友 · 名录与聚灵</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">招募</b> <span class="dim">招募令×' + (g.items['招募令'] || 0) + ' ／ 紫气' + F(g.res.ziqi) + '</span></div></div>' +
       '<div class="toolbar"><button class="btn btn-gold" data-act="sum" data-a="1">单抽（1令/30紫）</button><button class="btn btn-gold" data-act="sum" data-a="10">十连（10令/280紫）</button></div>' +
       '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复道友自动进阶★</div></div>';
-    // 阵容
-    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/5</span></div><div class="slot-grid">';
-    for (let i = 0; i < 5; i++) {
-      const iid = g.formation[i];
-      if (iid) {
-        const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-        html += '<div class="f-slot" data-slot="' + i + '"><div class="pos">' + (i === 0 ? '前排' : '') + '</div><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>' + tpl.role + '·' + tpl.el + '</small></div>';
-      } else {
-        html += '<div class="f-slot empty" data-slot="' + i + '">空位</div>';
-      }
-    }
-    html += '</div><div class="dim mt8">点击道友下阵；先点的排前（越前越挨打，也越先出手）。</div></div>';
 
     // 聚灵阵
     html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置道友加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
     if (g.juling.length) {
       g.juling.forEach(iid => {
         const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-        html += '<div class="f-slot" data-juling="' + iid + '"><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>Lv.' + p.level + '</small></div>';
+        html += '<div class="f-slot" data-juling="' + iid + '"><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>' + C.partnerRealmLabel(p) + '</small></div>';
       });
     } else {
       html += '<div class="f-slot empty" style="grid-column:1/4">暂无极闲道友</div>';
@@ -2530,7 +2559,7 @@ code.num { font-family: Consolas, monospace; }
     let html = '<div class="sec-title">装备 · 法宝</div>';
     // 单位选择
     html += '<div class="sec-tabs"><button class="btn ' + (unitKey === 'hero' ? 'btn-gold' : '') + '" data-act="equnit" data-a="hero">主角</button>';
-    g.formation.forEach(iid => { const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); html += '<button class="btn ' + (unitKey === iid ? 'btn-gold' : '') + '" data-act="equnit" data-a="' + iid + '">' + tpl.name + '</button>'; });
+    g.formation.forEach(iid => { const p = g.partners.find(x => x.iid === iid); if (!p) return; const tpl = DATA.PARTNERS.find(x => x.id === p.pid); html += '<button class="btn ' + (unitKey === iid ? 'btn-gold' : '') + '" data-act="equnit" data-a="' + iid + '">' + tpl.name + '</button>'; });
     html += '</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">' + unitName + ' 装备</b></div><span class="dim">品质：白绿蓝紫金红</span></div>';
     // 已装备槽
@@ -2668,6 +2697,12 @@ code.num { font-family: Consolas, monospace; }
     const bf = document.querySelector('.battle-field');
     if (!bf) { if (onDone) onDone(); return; }
     S.animating = true;
+    // 每场新战斗：能量从 0 开始
+    bf.querySelectorAll('.slot:not(.empty)').forEach(slot => {
+      slot.__energy = 0;
+      const bar = slot.querySelector('.slot-energy i');
+      if (bar) bar.style.width = '0%';
+    });
     const roundEl = bf.querySelector('.bf-round');
     const slotEl = (side, idx) => bf.querySelector('[data-side="' + side + '"][data-idx="' + idx + '"]');
     const adjustHp = (el, delta) => {
@@ -2797,11 +2832,15 @@ code.num { font-family: Consolas, monospace; }
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'tribp': function (a) { const r = C.partnerTribulate(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, (S.game.items['渡劫丹'] || 0) > 0); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5道友）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
+      else {
+        if (g.formation.length >= 6) { toast('上阵已满（最多6位）'); return; }
+        if (a !== 'hero' && g.juling.includes(a)) g.juling = g.juling.filter(x => x !== a);
+        g.formation.push(a);
+      }
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
@@ -2859,6 +2898,9 @@ code.num { font-family: Consolas, monospace; }
     // 聚灵阵点击移出
     const j = e.target.closest('[data-juling]');
     if (j) { act.jld(j.dataset.juling); return; }
+    // 上阵阵容点击下阵
+    const fm = e.target.closest('[data-fm]');
+    if (fm) { act.fld(fm.dataset.fm); return; }
     // 阵容槽：点击已占用 → 下阵
     const sl = e.target.closest('[data-slot]');
     if (sl) {
