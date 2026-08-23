@@ -632,6 +632,26 @@
     if (onDone) onDone();
   }
 
+  // 渡劫破境全屏动画：雷电交加、化龙升空、扶摇直上九万里
+  function playCine() {
+    if (document.getElementById('tribcine')) return;
+    let streaks = '';
+    for (let i = 0; i < 10; i++) streaks += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%; animation-delay:' + (Math.random() * 0.5).toFixed(2) + 's"></i>';
+    let bolts = '';
+    for (let i = 0; i < 3; i++) {
+      const l = (8 + Math.random() * 84).toFixed(1);
+      const h = Math.round(140 + Math.random() * 140);
+      const d = (Math.random() * 0.6).toFixed(2);
+      bolts += '<svg class="tc-bolt" style="left:' + l + '%; height:' + h + 'px; animation-delay:' + d + 's" width="42" viewBox="0 0 42 200"><polyline points="16,0 34,60 10,72 32,150 18,200" fill="none" stroke="#cfe4ff" stroke-width="3"/></svg>';
+    }
+    const mask = el('<div id="tribcine" class="tribcine"><div class="tc-ray"></div><div class="tc-flash"></div>' + bolts +
+      '<div class="tc-dragon">🐉</div><div class="tc-flow"></div><div class="tc-streaks">' + streaks + '</div>' +
+      '<div class="tc-text"><div class="tc-title">渡劫成功</div><div class="tc-sub">化龙升空 · 扶摇直上九万里</div></div></div>');
+    document.body.appendChild(mask);
+    setTimeout(() => { if (mask) mask.classList.add('fade-out'); }, 5000);
+    setTimeout(() => { if (mask && mask.parentNode) mask.remove(); }, 5900);
+  }
+
   const act = {
     'push': function () {
       if (S.animating) return;
@@ -665,6 +685,7 @@
       const usePill = info.pills > 0;
       if (usePill) toast('使用渡劫丹，成功率提升…');
       const r = C.tribulate(S.game, usePill);
+      if (r.ok) playCine();
       toast(r.msg);
       addLog('main', r.msg, r.ok ? 'bl-system' : 'bl-dmg');
       C.save(S.game); render();
