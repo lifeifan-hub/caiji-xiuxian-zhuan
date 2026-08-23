@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>渡劫破境动画预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC","Microsoft YaHei","KaiTi",serif; background: radial-gradient(1000px 500px at 50% -10%, #2a2050, #0f0b1e); color: #e6d9a8; overflow: hidden; min-height: 100vh; }
+    .hint { position: fixed; top: 18px; left: 0; right: 0; text-align: center; color: #a99b74; font-size: 14px; z-index: 20; }
+    .btns { position: fixed; bottom: 26px; left: 0; right: 0; text-align: center; z-index: 20; }
+    button { padding: 12px 26px; border-radius: 11px; border: 1px solid #f0c75e; background: linear-gradient(180deg,#f0c75e,#d9a63e); color: #2a1f00; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    button:hover { transform: translateY(-2px); }
+
+    .tribcine { position: fixed; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; background: radial-gradient(120% 80% at 50% 20%, #1a1440 0%, #08061a 60%, #03020c 100%); animation: tcIn .3s ease; }
+    .tribcine.fade-out { animation: tcOut .8s ease forwards; }
+    @keyframes tcIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes tcOut { from { opacity: 1; } to { opacity: 0; } }
+    .tc-ray { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, rgba(240,220,150,.35) 0%, rgba(240,220,150,0) 42%); animation: tcpulse 1.6s ease-in-out infinite; }
+    @keyframes tcpulse { 0%,100% { opacity: .3; transform: scale(1); } 50% { opacity: .7; transform: scale(1.12); } }
+    .tc-flash { position: absolute; inset: 0; background: rgba(200,220,255,.92); opacity: 0; animation: tcflash 5.4s step-end infinite; }
+    @keyframes tcflash { 0%,18%,36%,100% { opacity: 0; } 6%,24% { opacity: .85; } 12%,40% { opacity: .3; } }
+    .tc-bolt { position: absolute; top: 0; filter: drop-shadow(0 0 8px #bcd6ff); opacity: 0; animation: tcbolt 5.4s infinite; }
+    @keyframes tcbolt { 0%,100% { opacity: 0; } 5% { opacity: 1; } 9% { opacity: .1; } 22% { opacity: .9; } 26% { opacity: .2; } 42% { opacity: .85; } 46% { opacity: 0; } }
+    .tc-dragon { position: absolute; left: 50%; bottom: -18vh; transform: translateX(-50%) scale(.7); font-size: 100px; line-height: 1; z-index: 4; animation: tcrise 4.4s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes tcrise { 0% { bottom: -18vh; transform: translateX(-50%) scale(.6) rotate(0deg); } 55% { transform: translateX(-50%) scale(1.18) rotate(-8deg); } 100% { bottom: 120vh; transform: translateX(-50%) scale(1.6) rotate(-16deg); } }
+    .tc-flow { position: absolute; left: 50%; bottom: -20vh; width: 70px; transform: translateX(-50%); background: linear-gradient(180deg, rgba(120,160,255,0), rgba(120,160,255,.5)); z-index: 3; animation: tcflow 4.4s linear forwards; }
+    @keyframes tcflow { from { height: 0; } to { height: 150vh; } }
+    .tc-streaks i { position: absolute; width: 2px; height: 46px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(200,220,255,.85)); animation: tcstreak 4.4s linear forwards; }
+    @keyframes tcstreak { from { transform: translateY(-20vh); } to { transform: translateY(120vh); } }
+    .tc-text { position: absolute; top: 18%; width: 100%; text-align: center; z-index: 6; animation: tctext 5.4s ease forwards; }
+    .tc-title { font-size: 42px; font-weight: 900; letter-spacing: 6px; color: #ffe9a8; text-shadow: 0 0 22px rgba(255,220,120,.9), 0 2px 6px #000; }
+    .tc-sub { margin-top: 8px; font-size: 16px; color: #dbe6ff; letter-spacing: 3px; text-shadow: 0 0 10px rgba(120,160,255,.7); }
+    @keyframes tctext { 0% { opacity: 0; transform: translateY(-10px); } 12% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="hint">渡劫破大境 · 动画预览（雷电交加 / 化龙升空 / 扶摇直上九万里）</div>
+  <div class="btns"><button id="play">▶ 播放渡劫动画</button></div>
+  <script>
+    function showCine() {
+      if (document.getElementById('tribcine')) return;
+      let streaks=''; for(let i=0;i<10;i++){streaks+='<i style="left:'+(Math.random()*100).toFixed(1)+'%; animation-delay:'+(Math.random()*0.5).toFixed(2)+'s"></i>';}
+      let bolts=''; for(let i=0;i<3;i++){const l=(8+Math.random()*84).toFixed(1),h=Math.round(140+Math.random()*140),d=(Math.random()*0.6).toFixed(2);bolts+='<svg class="tc-bolt" style="left:'+l+'%; height:'+h+'px; animation-delay:'+d+'s" width="42" viewBox="0 0 42 200"><polyline points="16,0 34,60 10,72 32,150 18,200" fill="none" stroke="#cfe4ff" stroke-width="3"/></svg>';}
+      const d=document.createElement('div'); d.id='tribcine'; d.className='tribcine';
+      d.innerHTML='<div class="tc-ray"></div><div class="tc-flash"></div>'+bolts+'<div class="tc-dragon">🐉</div><div class="tc-flow"></div><div class="tc-streaks">'+streaks+'</div><div class="tc-text"><div class="tc-title">渡劫成功</div><div class="tc-sub">化龙升空 · 扶摇直上九万里</div></div>';
+      document.body.appendChild(d);
+      setTimeout(function(){ if(d) d.classList.add('fade-out'); },5000);
+      setTimeout(function(){ if(d && d.parentNode) d.remove(); },5900);
+    }
+    document.getElementById('play').onclick=function(){ showCine(); };
+    setTimeout(showCine, 400); // 打开自动播放一次
+  </script>
+</body>
+</html>
