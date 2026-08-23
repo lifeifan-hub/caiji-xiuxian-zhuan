@@ -125,6 +125,18 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 999px; transition: width .3s; }
 .bar.purple > i { background: linear-gradient(90deg, #c9a0ff, #e6d0ff); }
 .red-bar > i { background: linear-gradient(90deg, #ff6b6b, #ffb3a0); }
+.break-wrap { margin-top: 12px; }
+.break-btn { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 14px 10px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(240,199,94,.22), rgba(160,120,40,.16)); color: var(--gold2); cursor: pointer; font-family: inherit; transition: all .15s; }
+.break-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(240,199,94,.3); }
+.break-btn:active { transform: scale(.98); }
+.break-ico { font-size: 30px; line-height: 1; text-shadow: 0 0 14px rgba(255,220,120,.8); }
+.break-name { font-size: 16px; font-weight: 800; letter-spacing: 3px; }
+.break-btn-trib { border-color: var(--red); background: linear-gradient(180deg, rgba(255,110,90,.25), rgba(200,60,40,.18)); color: #ffe1d6; }
+.break-btn-trib .break-ico { text-shadow: 0 0 14px rgba(255,150,120,.9); }
+.break-stats { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.break-stats > div { background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.break-stats .dim { font-size: 11px; }
+.break-stats b { font-size: 15px; }
 
 /* 伙伴卡 */
 .partner-card { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 9px; background: rgba(23,17,48,.55); margin-bottom: 8px; cursor: pointer; }
