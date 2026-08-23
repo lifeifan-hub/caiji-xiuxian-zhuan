@@ -1133,6 +1133,33 @@
     return { ok: false, stage, res, retreated: true };
   }
 
+  // 挂机当前关卡：胜利只拿奖励不推进；打不过则退回上一层继续挂机
+  function farmMainline(state, cb) {
+    const stage = state.mainline.stage;
+    const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
+    const enemyUnits = enemyForStage(stage);
+    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
+    if (res.winner === 'ally') {
+      const rw = stageReward(state);
+      state.res.xiuwei += rw.xiuwei;
+      state.res.copper += rw.copper;
+      if (stage % 10 === 0) {
+        const zi = 8 + state.realm.idx * 4;
+        state.res.ziqi += zi;
+        if (cb) cb({ msg: '击败 Boss！获得鸿蒙紫气 +' + zi, cls: 'loot' });
+      }
+      if (Math.random() < rw.equipChance) {
+        const e = genEquip(state, qualityForStage(stage));
+        state.equipment.push(e);
+        if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
+      }
+      return { ok: true, stage, reward: rw, res, farmed: true };
+    }
+    state.mainline.stage = Math.max(1, state.mainline.stage - 1);
+    if (cb) cb({ msg: (res.timeout ? '30 回合未击破' : '队伍被击败') + '，退回第 ' + state.mainline.stage + ' 关继续挂机！', cls: 'system' });
+    return { ok: false, stage, res, retreated: true };
+  }
+
   // ---------- 水月洞天 ----------
   function shuiyueStage(state) {
     const boss = state.dungeons.shuiyue.bestBoss + 1;
@@ -1234,6 +1261,7 @@
     craftFabao, equipFabao, fabaoBonus,
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
+    farmMainline,
     teamPower, formatDuration,
     layerCost, breakthroughLayer, layerName,
     partnerTpl, partnerQ, pMaxLevel, slotName, colorName, qualityMult,
