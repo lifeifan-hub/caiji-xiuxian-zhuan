@@ -272,15 +272,11 @@
         <div class="statsrow">
           <div class="stat"><span>生命</span><b>${F(st.hp)}</b></div>
           <div class="stat"><span>攻击</span><b>${F(st.atk)}</b></div>
-          <div class="stat"><span>防御</span><b>${F(st.def)}</b></div>
+          <div class="stat"><span>物防/法防</span><b>${F(st.def)}</b></div>
           <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
-          <div class="stat"><span>等级</span><b>${F(g.hero.level)}</b></div>
           <div class="stat"><span>五行</span><b style="color:${ELEMC[heroEl] || '#fff'}">${heroEl}</b></div>
         </div>
-        <div class="row mt8">
-          <span class="muted">升级主角</span>
-          <button class="btn btn-blue btn-sm" data-act="hero-up">升一级（修为 ${F(C.heroLevelCost(g.hero.level))}）</button>
-        </div>
+        <div class="dim mt8">渡劫成功每提升一层，主角与上阵伙伴的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！</div>
       </div>
 
       <div class="card">
@@ -309,7 +305,7 @@
           <div class="stat"><span>玉液/秒</span><b>${r.qiongjiang.toFixed(1)}</b></div>
         </div>
         <div class="row mt8">
-          <span class="muted">仙府法阵/境界/主角等级越高，挂机越多</span>
+          <span class="muted">仙府法阵/境界/关卡越高，挂机越多</span>
           <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关：开' : '自动推关：关'}</button>
         </div>
       </div>
@@ -665,7 +661,6 @@
     },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
     'cine': function () { playCine(); },
-    'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
     'layerup': function () {
       const pills = S.game.items['渡劫丹'] || 0;
       const r = C.breakthroughLayer(S.game, pills > 0);
