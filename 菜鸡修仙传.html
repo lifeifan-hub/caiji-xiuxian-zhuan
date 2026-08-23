@@ -1993,7 +1993,7 @@ code.num { font-family: Consolas, monospace; }
 
   const S = {
     game: null, tab: 'main', race: null, elem: null,
-    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
+    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items',
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -2111,6 +2111,7 @@ code.num { font-family: Consolas, monospace; }
     { id: 'equip', ico: '剑', name: '装备' },
     { id: 'dungeon', ico: '战', name: '副本' },
     { id: 'shop', ico: '市', name: '仙宝阁' },
+    { id: 'dimension', ico: '次', name: '次元空间' },
     { id: 'settings', ico: '⋯', name: '更多' }
   ];
   function buildNav() {
@@ -2210,7 +2211,7 @@ code.num { font-family: Consolas, monospace; }
     }
     const v = $('#cview');
     v.innerHTML = '';
-    const fn = { main: renderMain, manor: renderManor, partner: renderPartner, equip: renderEquip, dungeon: renderDungeon, shop: renderShop, settings: renderSettings }[S.tab];
+    const fn = { main: renderMain, manor: renderManor, partner: renderPartner, equip: renderEquip, dungeon: renderDungeon, shop: renderShop, dimension: renderDimension, settings: renderSettings }[S.tab];
     if (fn) fn(v);
   }
 
@@ -2429,6 +2430,75 @@ code.num { font-family: Consolas, monospace; }
   }
 
   function qColor(q) { return { 1: 'var(--green)', 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
+
+  // ---------- 次元空间 ----------
+  function renderDimension(v) {
+    const g = S.game;
+    const tabs = [['items', '物品'], ['equip', '装备'], ['partner', '道友'], ['fabao', '法宝']];
+    let html = '<div class="sec-title">次元空间</div>';
+    html += '<div class="sec-tabs">';
+    tabs.forEach(t => { html += '<button class="btn ' + (S.dimSub === t[0] ? 'btn-gold' : '') + '" data-act="dimsub" data-a="' + t[0] + '">' + t[1] + '</button>'; });
+    html += '</div>';
+    const key = S.dimSub === 'equip' ? dimEquipHtml(g) : S.dimSub === 'partner' ? dimPartnerHtml(g) : S.dimSub === 'fabao' ? dimFabaoHtml(g) : dimItemsHtml(g);
+    html += key;
+    v.innerHTML = html;
+  }
+  function dimItemsHtml(g) {
+    let html = '<div class="card"><div class="sec-title" style="margin:0">物品 <span class="muted">持有道具一览</span></div>';
+    const keys = Object.keys(g.items).filter(k => (g.items[k] || 0) > 0);
+    if (!keys.length) html += '<div class="dim mt8">暂无物品</div>';
+    keys.forEach(k => {
+      const use = ['聚元丹', '聚灵丹'].includes(k) ? '<button class="btn btn-sm btn-green" data-act="use" data-a="' + k + '">使用</button>' : '';
+      html += '<div class="shop-item"><span>' + k + '</span><span><b class="gold">×' + (g.items[k] || 0) + '</b> ' + use + '</span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function dimEquipHtml(g) {
+    let html = '<div class="card"><div class="sec-title" style="margin:0">装备 <span class="muted">共 ' + g.equipment.length + ' 件</span></div>';
+    if (!g.equipment.length) html += '<div class="dim mt8">暂无装备，主线掉落或仙府·器宝锻造。</div>';
+    g.equipment.forEach(e => {
+      const sl = DATA.SLOTS.find(s => s.id === e.slot);
+      const on = g.equipped[e.iid];
+      const onTxt = on ? (on === 'hero' ? '（主角）' : ((g.partners.find(p => p.iid === on) || {}).name || '')) : '';
+      html += '<div class="shop-item"><span><b class="' + QCOLOR[DATA.QMAP[e.quality]] + '">' + sl.name + '·' + e.quality + '</b> 强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + ' ' + onTxt + '</span><span><button class="btn btn-sm btn-green" data-act="eq" data-a="' + e.iid + '">装备</button> <button class="btn btn-sm" data-act="enh" data-a="' + e.iid + '">强化</button> <button class="btn btn-sm" data-act="ref" data-a="' + e.iid + '">精炼</button> <button class="btn btn-sm" data-act="fum" data-a="' + e.iid + '">附魔</button> <button class="btn btn-sm btn-red" data-act="dec" data-a="' + e.iid + '">分解</button></span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function dimPartnerHtml(g) {
+    let html = '<div class="card"><div class="sec-title" style="margin:0">道友 <span class="muted">共 ' + g.partners.length + ' 位</span></div>';
+    if (!g.partners.length) html += '<div class="dim mt8">暂无敌友，用招募令或紫气招募。</div>';
+    g.partners.forEach(p => {
+      const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+      const st = C.unitStats(g, p.iid) || { atk: 0, hp: 0 };
+      const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid);
+      html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
+        '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
+        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
+        '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
+        '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
+        '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级</button></div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function dimFabaoHtml(g) {
+    let html = '<div class="card"><div class="sec-title" style="margin:0">法宝 <span class="muted">碎片合成·强力被动·上限3件</span></div>';
+    html += '<div class="row"><div><b class="gold">已装备</b></div></div><div class="dim mt8">';
+    if (g.equippedFabao.length) html += g.equippedFabao.map(x => DATA.FABAO[x].name).join('、');
+    else html += '暂无法宝';
+    html += '</div>';
+    Object.keys(DATA.FABAO).forEach(fid => {
+      const f = DATA.FABAO[fid];
+      const have = g.items['法宝碎片·' + f.name] || 0;
+      const owned = (g.fabao.find(x => x.id === fid) || {}).count || 0;
+      const eq = g.equippedFabao.includes(fid);
+      html += '<div class="shop-item"><span><b class="gold">' + f.name + '</b> <span class="dim">' + f.desc + '</span></span><span><span class="dim">碎片' + have + '/' + f.frag + ' · 持有' + owned + '</span><button class="btn btn-sm' + (have >= f.frag ? ' btn-gold' : '') + '" data-act="craft" data-a="' + fid + '">合成</button> ' + (eq ? '<span class="green">已装备</span>' : '<button class="btn btn-sm" data-act="fab" data-a="' + fid + '">装备</button>') + '</span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
 
   // ---------- 装备 / 法宝 ----------
   function renderEquip(v) {
@@ -2742,6 +2812,7 @@ code.num { font-family: Consolas, monospace; }
     },
     'daily': function (a) { const r = C.dailySweep(S.game, a); toast(r.msg); if (r.ok) { addLog('dungeon', r.msg, 'bl-loot'); C.save(S.game); render(); } },
     'shop': function (a) { S.shop = a; render(); },
+    'dimsub': function (a) { S.dimSub = a; render(); },
     'redeem': function () {
       const inp = $('#redeem-input');
       const code = inp ? inp.value.trim() : '';
