@@ -195,10 +195,10 @@
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct) =>
+    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct, q, qName) =>
       '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
       '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
-      '<div class="slot-lv">' + lv + '</div>' +
+      '<div class="slot-lv">' + (q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '') + lv + '</div>' +
       '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div>' +
       '<div class="slot-energy"><i style="width:' + (startPct || 0) + '%"></i></div></div>';
     let ph = '';
@@ -207,9 +207,9 @@
       else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false, 20); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
-    const enemies = C.enemyForStage(stage);
+    const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
     let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15); });
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -432,7 +432,7 @@
     v.innerHTML = html;
   }
 
-  function qColor(q) { return { 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
+  function qColor(q) { return { 1: 'var(--green)', 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
 
   // ---------- 装备 / 法宝 ----------
   function renderEquip(v) {
