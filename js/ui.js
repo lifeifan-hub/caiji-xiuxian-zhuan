@@ -119,16 +119,12 @@
     const g = S.game;
     if (!g) return;
     const nameEl = $('#hero-name-hdr');
-    if (nameEl) nameEl.textContent = '｜' + (g.heroName || RACE[g.race].name + '道友');
-    $('#realm-tag').textContent = C.realmLabel(g) + ' · 战力' + F(C.teamPower(g));
+    if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
     const res = g.res;
-    $('#resbar').innerHTML =
-      '<div class="res"><span class="ico">▲</span>修为<b>' + F(res.xiuwei) + '</b></div>' +
-      '<div class="res"><span class="ico">文</span>铜钱<b>' + F(res.copper) + '</b></div>' +
-      '<div class="res"><span class="ico">玉</span>玉液<b>' + F(res.qiongjiang) + '</b></div>' +
-      '<div class="res"><span class="ico">灵</span>灵气<b>' + F(res.lingqi) + '</b></div>' +
-      '<div class="res"><span class="ico">紫</span>紫气<b>' + F(res.ziqi) + '</b></div>' +
-      '<div class="res"><span class="ico">行</span>五行<b>' + F(res.wuxing) + '</b></div>';
+    const set = (id, v) => { const e = $(id); if (e) e.textContent = F(v); };
+    set('#hdr-copper', res.copper);
+    set('#hdr-xiuwei', res.xiuwei);
+    set('#hdr-ziqi', res.ziqi);
   }
 
   // ---------- 导航 ----------
