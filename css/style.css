@@ -99,6 +99,7 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 
 /* 主视图 */
 #cview { flex: 1; padding: 14px 14px 90px; }
+#battle-win { padding: 14px 14px 0; }
 .sec-title { font-weight: 700; color: var(--gold); letter-spacing: 1px; margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .sec-title:first-child { margin-top: 0; }
 .card { background: linear-gradient(180deg, rgba(34,26,69,.6), rgba(23,17,48,.75)); border: 1px solid var(--line); border-radius: 11px; padding: 12px; margin-bottom: 10px; }
