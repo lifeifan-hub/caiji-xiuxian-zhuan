@@ -30,10 +30,10 @@
     @keyframes tcshock { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.1); } 16% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(9); } }
     .tc-streaks i { position: absolute; bottom: -12vh; width: 2px; height: 54px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(215,238,255,.95)); animation: tcstreak 1.4s ease-out forwards; }
     @keyframes tcstreak { from { transform: translateY(8vh); opacity: 1; } to { transform: translateY(-125vh); opacity: .2; } }
-    .tc-text { position: absolute; top: 13%; width: 100%; text-align: center; z-index: 6; animation: tctext 9s ease forwards; }
+    .tc-text { position: absolute; top: 13%; width: 100%; text-align: center; z-index: 6; opacity: 0; animation: tctext 1.9s ease-out 6.9s forwards; }
     .tc-title { font-size: 42px; font-weight: 900; letter-spacing: 6px; color: #ffe9a8; text-shadow: 0 0 22px rgba(255,220,120,.9), 0 2px 6px #000; }
     .tc-sub { margin-top: 8px; font-size: 16px; color: #dbe6ff; letter-spacing: 3px; text-shadow: 0 0 10px rgba(120,160,255,.7); }
-    @keyframes tctext { 0% { opacity: 0; transform: translateY(-10px); } 6% { opacity: 1; transform: translateY(0); } 87% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes tctext { 0% { opacity: 0; transform: scale(.5); filter: blur(8px); } 55% { opacity: .7; } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
   </style>
 </head>
 <body>
@@ -45,7 +45,7 @@
       let streaks=''; for(let i=0;i<12;i++){streaks+='<i style="left:'+(Math.random()*100).toFixed(1)+'%; animation-delay:'+(4.6+Math.random()*1.1).toFixed(2)+'s"></i>';}
       let bolts=''; for(let i=0;i<4;i++){const l=(8+Math.random()*84).toFixed(1),h=Math.round(150+Math.random()*150),d=(Math.random()*0.7).toFixed(2);bolts+='<svg class="tc-bolt" style="left:'+l+'%; height:'+h+'px; animation-delay:'+d+'s" width="46" viewBox="0 0 42 200"><polyline points="16,0 34,60 10,72 32,150 18,200" fill="none" stroke="#d6e8ff" stroke-width="3.5"/></svg>';}
       const d=document.createElement('div'); d.id='tribcine'; d.className='tribcine';
-      d.innerHTML='<div class="tc-ray"></div><div class="tc-flash"></div>'+bolts+'<div class="tc-beam"></div><div class="tc-burst"></div><div class="tc-shock"></div><div class="tc-streaks">'+streaks+'</div><div class="tc-text"><div class="tc-title">渡劫成功</div><div class="tc-sub">五彩神光冲天 · 震撼苍穹</div></div>';
+      d.innerHTML='<div class="tc-ray"></div><div class="tc-flash"></div>'+bolts+'<div class="tc-beam"></div><div class="tc-burst"></div><div class="tc-shock"></div><div class="tc-streaks">'+streaks+'</div><div class="tc-text"><div class="tc-title">渡劫成功</div></div>';
       document.body.appendChild(d);
       setTimeout(function(){ if(d) d.classList.add('fade-out'); },8900);
       setTimeout(function(){ if(d && d.parentNode) d.remove(); },9700);
