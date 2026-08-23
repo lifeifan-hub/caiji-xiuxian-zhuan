@@ -85,7 +85,7 @@
     addPartner(state, starter, 1);
     addPartner(state, pickBluePartner(), 1);
     addPartner(state, pickBluePartner(), 1);
-    state.formation = state.partners.map(p => p.iid);
+    state.formation = ['hero'].concat(state.partners.map(p => p.iid)).slice(0, 6);
     recomputeStats(state);
     return state;
   }
@@ -151,6 +151,8 @@
     (state.partners || []).forEach(p => {
       if (!p.realm) p.realm = { idx: Math.min(8, Math.floor((p.level - 1) / 15)), layer: Math.max(1, 1 + Math.floor(((p.level - 1) % 15) * 19 / 15)) };
     });
+    state.formation = state.formation || [];
+    if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
     return state;
   }
 
@@ -532,13 +534,14 @@
     const mult = REALMS[p.realm.idx].mult;
     return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(p.realm.layer, 2.2));
   }
-  function partnerTribulate(state, iid) {
+  function partnerTribulate(state, iid, usePill) {
     const p = state.partners.find(x => x.iid === iid);
     if (!p) return { ok: false, msg: '道友不存在' };
     const idx = p.realm.idx, layer = p.realm.layer;
     const cost = partnerLayerCost(p);
     if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
-    const chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    let chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    if (usePill && (state.items['渡劫丹'] || 0) > 0) { takeItem(state, '渡劫丹', 1); chance = clamp(chance + 0.08, 0, 0.99); }
     const success = Math.random() < chance;
     if (success) {
       state.res.xiuwei -= cost;
@@ -555,7 +558,7 @@
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
-    state.formation = ids.slice(0, 5);
+    state.formation = ids.slice(0, 6);
     // 从聚灵阵移除 & 反向
     state.formation.forEach(id => { if (state.juling.includes(id)) state.juling = state.juling.filter(x => x !== id); });
     recomputeStats(state);
@@ -566,8 +569,7 @@
     recomputeStats(state);
   }
   function formationUnits(state) {
-    const hero = { iid: 'hero', isHero: true };
-    return [hero].concat(state.formation.slice(0, 5).map(id => state.partners.find(p => p.iid === id)).filter(Boolean));
+    return state.formation.slice(0, 6).map(id => id === 'hero' ? { iid: 'hero', isHero: true } : state.partners.find(p => p.iid === id)).filter(Boolean);
   }
 
   // ---------- 法宝 ----------
