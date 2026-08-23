@@ -260,9 +260,11 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
 .slot-hp.low i { background: linear-gradient(90deg, #ffb04a, #e0663f); }
 .slot-energy { position: relative; width: 92%; height: 16px; background: rgba(0,0,0,.5); border-radius: 4px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
-.slot-energy i { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; background: linear-gradient(180deg, #c9a0ff, #8b5fd6); box-shadow: 0 0 8px rgba(180,140,255,.6); animation: energyFill 12s linear forwards; }
-@keyframes energyFill { from { height: 0; } to { height: 100%; } }
+.slot-energy i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #8b5fd6, #c9a0ff); box-shadow: 0 0 8px rgba(180,140,255,.6); transition: width .2s linear; }
 .slot-energy-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; text-shadow: 0 1px 2px #000; z-index: 2; white-space: nowrap; overflow: hidden; }
+.slot.ult { box-shadow: 0 0 14px rgba(201,160,255,.8); border-color: #c9a0ff; }
+.ult-pop { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; color: #ffe27a; text-shadow: 0 1px 3px #000; pointer-events: none; animation: ultUp .7s ease-out forwards; z-index: 8; }
+@keyframes ultUp { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
 .slot.dead { opacity: .38; filter: grayscale(.6); }
 .bf-result { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; z-index: 9; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.8); animation: bfpop .5s ease-out; }
 .bf-result.win { color: var(--gold2); }
@@ -1299,7 +1301,7 @@ code.num { font-family: Consolas, monospace; }
   function layerCost(state) {
     const idx = state.realm.idx, layer = state.realm.layer;
     const mult = REALMS[idx].mult;
-    return Math.round(120 * Math.pow(mult, 1.2) * Math.pow(layer, 1.5));
+    return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(layer, 2.2));
   }
   function breakthroughLayer(state, usePill) {
     if (state.realm.layer >= MAX_LAYER) return { ok: false, msg: '已圆满，请渡劫大境界' };
@@ -1328,10 +1330,18 @@ code.num { font-family: Consolas, monospace; }
     const r = REALMS[state.realm.idx];
     return r.name + '·' + layerName(state.realm.layer) + '层';
   }
+  // 道友独立境界：按等级划分，品质越高可修到的境界越高（最高到渡劫）
+  function partnerRealmLabel(p) {
+    const LPR = 15; // 每 15 级一个大境界
+    const idx = Math.min(8, Math.floor((p.level - 1) / LPR));
+    const inRealm = (p.level - 1) % LPR;
+    const layer = Math.max(1, Math.min(20, 1 + Math.floor(inRealm * 19 / LPR)));
+    return REALMS[idx].name + '·' + layerName(layer) + '层';
+  }
   function tribulationCost(state) {
     const idx = state.realm.idx;
     const mult = REALMS[idx].mult;
-    return Math.round(1600 * Math.pow(mult, 1.2) * (1 + idx * 0.3));
+    return Math.round(60000 * Math.pow(mult, 1.9) * (1 + idx * 0.6));
   }
   function tribulationInfo(state) {
     if (state.realm.layer < MAX_LAYER) return { maxed: false };
@@ -1948,7 +1958,7 @@ code.num { font-family: Consolas, monospace; }
   CJ.Core = {
     newGame, hasSave, load, save, wipe, exportSave, importSave,
     tick, offlineGains, rates, applyGain, recomputeStats, unitStats,
-    realmLabel, tribulationInfo, tribulate, realmChance, realmFailPct,
+    realmLabel, partnerRealmLabel, tribulationInfo, tribulate, realmChance, realmFailPct,
     tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
@@ -2166,19 +2176,19 @@ code.num { font-family: Consolas, monospace; }
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, realm, hp, maxh, hero, boss, startPct, q, qName, regen) => {
+    const slotHtml = (side, idx, nm, color, realm, hp, maxh, hero, boss, startPct, q, qName, regen, ult) => {
       const hpPct = Math.max(0, Math.min(100, hp / maxh * 100));
-      const dur = Math.max(1.5, Math.min(30, 1000 / (regen || 80)));
       const qBadge = q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '';
-      return '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '" data-regen="' + (regen || 0) + '">' +
+      return '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '" data-regen="' + (regen || 0) + '" data-ult="' + (ult || '专属技能') + '">' +
         '<div class="slot-name" style="color:' + color + '">' + qBadge + nm + '</div>' +
         '<div class="slot-hp"><i style="width:' + hpPct + '%"></i><span class="slot-hp-num">' + Math.round(hp) + '</span></div>' +
-        '<div class="slot-energy"><i style="animation-duration:' + dur + 's"></i><span class="slot-energy-txt">' + realm + '</span></div></div>';
+        '<div class="slot-energy"><i style="width:0%"></i><span class="slot-energy-txt">' + realm + '</span></div></div>';
     };
     let ph = '';
+    const heroUlt = DATA.SKILLS[RACE[g.race].uid].name;
     pu.forEach((u, i) => {
-      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30, 0, '', 110); }
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), false, false, 20, tpl.q, C.colorName(tpl.q), 95); }
+      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30, 0, '', 110, heroUlt); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', C.partnerRealmLabel(p), hps, Math.max(1, hps), false, false, 20, tpl.q, C.colorName(tpl.q), 95, tpl.name + '·技'); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
@@ -2187,7 +2197,7 @@ code.num { font-family: Consolas, monospace; }
     const bp = disp.findIndex(x => x.en.boss);
     if (bp >= 0 && disp.length > 1) { const b = disp.splice(bp, 1)[0]; disp.splice(Math.ceil(disp.length / 2), 0, b); }
     let eh = '';
-    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName, 80); });
+    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName, 80, en.boss ? '妖王秘技' : '妖技'); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -2671,7 +2681,7 @@ code.num { font-family: Consolas, monospace; }
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
       if (aEl && ev.energy !== undefined) {
         const bar = aEl.querySelector('.slot-energy i');
-        if (bar) { bar.style.animation = 'none'; bar.style.height = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
+        if (bar) { bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
       }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
@@ -2847,6 +2857,30 @@ code.num { font-family: Consolas, monospace; }
 
   // ---------- 游戏循环 ----------
   let tickCounter = 0;
+  // 能量条：持续注满循环，满后释放专属技能
+  setInterval(() => {
+    if (!S.game || S.animating) return;
+    const bf = document.querySelector('.battle-field');
+    if (!bf) return;
+    bf.querySelectorAll('.slot:not(.empty)').forEach(slot => {
+      const regen = parseFloat(slot.dataset.regen) || 80;
+      slot.__energy = (slot.__energy || 0) + regen * 0.25;
+      const bar = slot.querySelector('.slot-energy i');
+      if (bar) bar.style.width = Math.min(100, slot.__energy / 10) + '%';
+      if (slot.__energy >= 1000) {
+        slot.__energy = 0;
+        if (!slot._ultBusy) {
+          slot._ultBusy = true;
+          slot.classList.add('ult');
+          const pop = document.createElement('div');
+          pop.className = 'ult-pop';
+          pop.textContent = slot.dataset.ult || '专属技能';
+          slot.appendChild(pop);
+          setTimeout(() => { if (pop.parentNode) pop.remove(); slot.classList.remove('ult'); slot._ultBusy = false; }, 720);
+        }
+      }
+    });
+  }, 250);
   setInterval(() => {
     if (!S.game) return;
     const g = S.game;
