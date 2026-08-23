@@ -164,10 +164,17 @@
     return 'blue';
   }
 
+  // 渡劫成长倍率：每成功渡劫一层小境界 +5%；破大境界按 境界倍率 跳升（提升更高）
+  function breakthroughMult(state) {
+    const idx = state.realm.idx;
+    const layer = state.realm.layer;
+    return REALMS[idx].mult * (1 + (layer - 1) * 0.05);
+  }
+
   // 计算一个单位的最终属性（含装备/法宝/仙府/聚灵阵加成）
   function unitStats(state, key) {
     const s = state;
-    const realmMult = REALMS[s.realm.idx].mult * (1 + (s.realm.layer - 1) * 0.03);
+    const realmMult = breakthroughMult(s);
     const lm = lingmaiMult(s.manor.lingmai);
     const linggenPct = s.manor.linggen * 3; // 每级3%
     const julingPct = julingBonus(s);
@@ -183,12 +190,12 @@
       const h = s.hero;
       const hb = { hp: 220, atk: 52, def: 26, spd: 100 };
       base = { hp: hb.hp, atk: hb.atk, def: hb.def, spd: hb.spd };
-      const m = realmMult * lm * (1 + (h.level - 1) * 0.10);
+      const m = realmMult * lm; // 属性随渡劫境界成长（已移除“升一级”等级成长）
       extra = {
         hp: base.hp * m,
         atk: base.atk * m,
         def: base.def * m,
-        spd: base.spd + s.manor.lingmai * 1.5 + equipBonus.spd + (fabao.spd || 0) + (h.level - 1) * 1.2
+        spd: base.spd + s.manor.lingmai * 1.5 + equipBonus.spd + (fabao.spd || 0)
       };
       // 种族被动
       const race = P.RACE[s.race];
@@ -211,7 +218,7 @@
       const starF = 1 + p.stars * 0.12;
       atk *= starF; def *= starF; hp *= starF;
       // 伙伴也按境界成长一部分，保持大境界推进不掉队
-      const realmPt = Math.pow(realmMult, 0.72);
+      const realmPt = Math.pow(realmMult, 0.80); // 伙伴也随渡劫层次成长，保持不掉队
       extra = {
         hp: hp * realmPt,
         atk: atk * realmPt,
@@ -327,12 +334,11 @@
   function rates(state) {
     const realmMult = REALMS[state.realm.idx].mult;
     const fazhen = state.manor.fazhen;
-    const heroLv = state.hero.level;
     const gongfa = state.gongfa;
     const stage = state.mainline.stage;
-    // 修为/秒：随法阵、境界、关卡、主角等级
+    // 修为/秒：随法阵、境界、关卡
     const xiuwei = Math.round(
-      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + heroLv * 0.05) * (1 + gongfa * 0.1) * 0.9
+      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9
     );
     const copper = Math.round(
       3 + realmMult * 0.4 + stage * 0.5
@@ -1204,19 +1210,6 @@
     return { ok:false, msg:'暂不可用' };
   }
 
-  // ---------- 主角升级（含境界加成） ----------
-  function heroLevelCost(level) { return Math.round(30 + Math.pow(level, 2.1) * 3); }
-  function upgradeHero(state) {
-    const maxLv = 500;
-    if (state.hero.level >= maxLv) return { ok:false, msg:'已满级' };
-    const cost = heroLevelCost(state.hero.level);
-    if (state.res.xiuwei < cost) return { ok:false, msg:'修为不足' };
-    state.res.xiuwei -= cost;
-    state.hero.level++;
-    recomputeStats(state);
-    return { ok:true, msg: state.hero.level + ' 级' };
-  }
-
   // ---------- 汇总战力 ----------
   function teamPower(state) {
     let pow = 0;
@@ -1241,7 +1234,7 @@
     craftFabao, equipFabao, fabaoBonus,
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
-    upgradeHero, heroLevelCost, teamPower, formatDuration,
+    teamPower, formatDuration,
     layerCost, breakthroughLayer, layerName,
     partnerTpl, partnerQ, pMaxLevel, slotName, colorName, qualityMult,
     lingmaiMult, lingmaiColor, elemMult, addItem, takeItem,
