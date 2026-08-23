@@ -2134,7 +2134,7 @@ code.num { font-family: Consolas, monospace; }
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
     let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -2160,6 +2160,12 @@ code.num { font-family: Consolas, monospace; }
   }
 
   // ---------- 主页 / 修仙 ----------
+  const REALM_COLORS = ['#8fe08a', '#7fb8ff', '#c39dff', '#f0c75e', '#ff9a5c', '#ff6b6b', '#e07bff', '#ffe27a', '#ff3b3b'];
+  function realmTier(stage) {
+    const caps = [30, 70, 120, 180, 250, 330, 430, 560, Infinity];
+    for (let i = 0; i < caps.length; i++) if (stage <= caps[i]) return i;
+    return caps.length - 1;
+  }
   function stageRealm(stage) {
     const tiers = [[30, '炼气'], [70, '筑基'], [120, '金丹'], [180, '元婴'], [250, '化神'], [330, '炼虚'], [430, '合体'], [560, '大乘'], [Infinity, '渡劫']];
     let t = 0;
