@@ -144,25 +144,25 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 @keyframes tcOut { from { opacity: 1; } to { opacity: 0; } }
 .tc-ray { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, rgba(240,220,150,.35) 0%, rgba(240,220,150,0) 42%); animation: tcpulse 1.6s ease-in-out infinite; }
 @keyframes tcpulse { 0%,100% { opacity: .3; transform: scale(1); } 50% { opacity: .7; transform: scale(1.12); } }
-.tc-flash { position: absolute; inset: 0; background: rgba(200,220,255,.92); opacity: 0; animation: tcflash 8.5s step-end infinite; }
-@keyframes tcflash { 0%,16%,34%,100% { opacity: 0; } 5%,22% { opacity: .8; } 11%,40% { opacity: .28; } }
-.tc-bolt { position: absolute; top: 0; filter: drop-shadow(0 0 9px #cfe0ff); opacity: 0; animation: tcbolt 8.5s infinite; }
-@keyframes tcbolt { 0%,100% { opacity: 0; } 4% { opacity: 1; } 8% { opacity: .1; } 20% { opacity: .9; } 24% { opacity: .2; } 40% { opacity: .85; } 44% { opacity: 0; } }
-.tc-dragon { position: absolute; left: 50%; bottom: -42vh; transform: translateX(-50%) scale(.8); z-index: 4; animation: tcrise 8.5s cubic-bezier(.18,.72,.28,1) forwards; }
-.tc-aura { position: absolute; left: 50%; top: 50%; width: 560px; height: 560px; max-width: 150vw; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle, rgba(255,216,120,.62) 0%, rgba(255,216,120,.18) 44%, rgba(255,216,120,0) 68%); filter: blur(8px); animation: tcaura 2.6s ease-in-out infinite; }
-.tc-dragon-inner { animation: tcspin 5.2s ease-in-out infinite; transform-origin: 50% 50%; filter: drop-shadow(0 0 22px rgba(255,205,90,.85)) drop-shadow(0 0 58px rgba(255,170,45,.4)); }
-.tc-dragon-inner img { width: clamp(260px, 66vmin, 470px); height: auto; display: block; }
-@keyframes tcrise { 0% { bottom: -42vh; transform: translateX(-50%) scale(.5); } 55% { transform: translateX(-50%) scale(1.08); } 100% { bottom: 140vh; transform: translateX(-50%) translateX(14px) scale(1.78); } }
-@keyframes tcspin { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
-@keyframes tcaura { 0%,100% { opacity: .4; transform: translate(-50%,-50%) scale(1); } 50% { opacity: .95; transform: translate(-50%,-50%) scale(1.16); } }
-.tc-flow { position: absolute; left: 50%; bottom: -20vh; width: 84px; transform: translateX(-50%); background: linear-gradient(180deg, rgba(150,180,255,0), rgba(150,180,255,.5)); z-index: 3; animation: tcflow 8.5s linear forwards; }
-@keyframes tcflow { from { height: 0; } to { height: 150vh; } }
-.tc-streaks i { position: absolute; width: 2px; height: 48px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(200,220,255,.85)); animation: tcstreak 8.5s linear forwards; }
-@keyframes tcstreak { from { transform: translateY(-20vh); } to { transform: translateY(120vh); } }
-.tc-text { position: absolute; top: 15%; width: 100%; text-align: center; z-index: 6; animation: tctext 8.8s ease forwards; }
+.tc-flash { position: absolute; inset: 0; background: rgba(200,220,255,.92); opacity: 0; animation: tcflash 9s step-end infinite; }
+@keyframes tcflash { 0%,14%,28%,40%,100% { opacity: 0; } 5%,20%,34% { opacity: .8; } 11%,26% { opacity: .3; } }
+.tc-bolt { position: absolute; top: 0; filter: drop-shadow(0 0 9px #cfe0ff); opacity: 0; animation: tcbolt 9s infinite; }
+@keyframes tcbolt { 0%,100% { opacity: 0; } 3% { opacity: 1; } 7% { opacity: .1; } 12% { opacity: .9; } 16% { opacity: .2; } 22% { opacity: 1; } 27% { opacity: .1; } 33% { opacity: .85; } 38% { opacity: 0; } }
+/* 五彩神光支柱：雷电结束后1秒自地面冲天而起 */
+.tc-beam { position: absolute; left: 50%; bottom: 0; width: clamp(30px, 4.5vw, 60px); height: 132vh; transform: translateX(-50%) scaleY(0); transform-origin: 50% 100%; z-index: 4; opacity: 0; border-radius: 12px; background: linear-gradient(180deg, #ffffff 0%, #ffe27a 14%, #7dffab 32%, #6ec9ff 50%, #ff7a7a 68%, #e0b45f 86%, #fff4cf 100%); box-shadow: 0 0 26px rgba(190,225,255,.95), 0 0 72px rgba(150,205,255,.55); animation: tcbeam 1.6s cubic-bezier(.16,.7,.24,1) 5.2s forwards; }
+@keyframes tcbeam { 0% { opacity: 0; transform: translateX(-50%) scaleY(0); } 8% { opacity: 1; } 100% { opacity: 1; transform: translateX(-50%) scaleY(1); } }
+/* 到达天空：白色闪光爆发 */
+.tc-burst { position: absolute; left: 50%; top: 15%; width: 130px; height: 130px; transform: translate(-50%,-50%) scale(.2); border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.98) 0%, rgba(180,225,255,.75) 34%, rgba(180,225,255,0) 68%); z-index: 5; opacity: 0; animation: tcburst 1.5s ease-out 6.8s forwards; }
+@keyframes tcburst { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 14% { opacity: 1; transform: translate(-50%,-50%) scale(1.05); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.7); } }
+/* 冲击波：环状扩散 */
+.tc-shock { position: absolute; left: 50%; top: 15%; width: 12vmin; height: 12vmin; transform: translate(-50%,-50%) scale(.1); border-radius: 50%; border: clamp(3px, .8vmin, 6px) solid rgba(205,238,255,.95); box-shadow: 0 0 30px rgba(150,210,255,.95), inset 0 0 24px rgba(150,210,255,.6); z-index: 5; opacity: 0; animation: tcshock 1.8s ease-out 6.8s forwards; }
+@keyframes tcshock { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.1); } 16% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(9); } }
+.tc-streaks i { position: absolute; bottom: -12vh; width: 2px; height: 54px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(215,238,255,.95)); animation: tcstreak 1.4s ease-out forwards; }
+@keyframes tcstreak { from { transform: translateY(8vh); opacity: 1; } to { transform: translateY(-125vh); opacity: .2; } }
+.tc-text { position: absolute; top: 13%; width: 100%; text-align: center; z-index: 6; animation: tctext 9s ease forwards; }
 .tc-title { font-size: 42px; font-weight: 900; letter-spacing: 6px; color: var(--gold2); text-shadow: 0 0 22px rgba(255,220,120,.9), 0 2px 6px #000; }
 .tc-sub { margin-top: 8px; font-size: 16px; color: #dbe6ff; letter-spacing: 3px; text-shadow: 0 0 10px rgba(120,160,255,.7); }
-@keyframes tctext { 0% { opacity: 0; transform: translateY(-10px); } 10% { opacity: 1; transform: translateY(0); } 86% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tctext { 0% { opacity: 0; transform: translateY(-10px); } 6% { opacity: 1; transform: translateY(0); } 87% { opacity: 1; } 100% { opacity: 0; } }
 
 /* 伙伴卡 */
 .partner-card { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 9px; background: rgba(23,17,48,.55); margin-bottom: 8px; cursor: pointer; }
