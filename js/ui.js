@@ -543,6 +543,7 @@
       '<p><b>【伙伴】</b>招募令/紫气抽卡，蓝紫金红；多余伙伴进聚灵阵加成全队。</p>' +
       '<p><b>【灵石】</b>水月洞天刷法宝碎片、五行山拿五行石、每日副本扫荡。</p>' +
       '</div></div>' +
+      '<div class="card"><div class="row"><div><b class="gold">动画预览</b></div><button class="btn btn-sm" data-act="cine">预览渡劫破境动画</button></div></div>' +
       '<div class="card"><div class="row"><div><b class="gold">存档导出</b></div><button class="btn btn-sm" data-act="export">复制存档</button></div><div class="dim mt8">把这段字符串发给朋友可在其设备继续玩。</div></div>' +
       '<div class="card"><div class="row"><div><b class="gold">存档导入</b></div><button class="btn btn-sm" data-act="import">粘贴导入</button></div></div>' +
       '<div class="card"><div class="row"><div><b class="red">重置进度</b></div><button class="btn btn-sm btn-red" data-act="reset">重置</button></div></div>' +
@@ -661,6 +662,7 @@
       playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
     },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
+    'cine': function () { playCine(); },
     'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
     'layerup': function () {
       const pills = S.game.items['渡劫丹'] || 0;
