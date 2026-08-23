@@ -341,15 +341,25 @@
       '</div>';
 
     if (show === 'build') {
-      const icons = { zuiyue: '樽', lingmai: '脉', linggen: '根', fazhen: '阵', juling: '聚', gongfa: '功', qiankun: '殿' };
-      ['zuiyue', 'lingmai', 'linggen', 'fazhen', 'juling', 'gongfa', 'qiankun'].forEach(bid => {
+      // 醉月樽：8 樽按境界解锁（炼气→大乘），每樽 60 玉液/分钟
+      const jars = C.zuiyueJarsUnlocked(g);
+      let jarHtml = '';
+      for (let i = 0; i < 8; i++) {
+        const nm = DATA.REALMS[i].name;
+        const on = i < jars;
+        jarHtml += '<div class="zjar' + (on ? ' on' : '') + '"><span class="zj-ico">樽</span><span>' + nm + '樽</span>' + (on ? '<b class="green">已解锁</b>' : '<small class="dim">需' + nm + '</small>') + '</div>';
+      }
+      html += '<div class="card"><div class="row"><div><b class="gold">樽 醉月樽</b> <span class="tag">' + jars + '/8</span></div><span class="green">' + jars + ' 玉液/秒 · ' + (jars * 60) + '/分</span></div>' +
+        '<div class="zjar-grid">' + jarHtml + '</div>' +
+        '<div class="dim mt8">每樽对应一个境界（炼气→大乘），达到对应境界自动解锁；每樽产 60 琼浆玉液/分钟。渡劫期不再增添。</div></div>';
+      const icons = { lingmai: '脉', linggen: '根', fazhen: '阵', juling: '聚', gongfa: '功', qiankun: '殿' };
+      ['lingmai', 'linggen', 'fazhen', 'juling', 'gongfa', 'qiankun'].forEach(bid => {
         const b = MANOR[bid];
         const lv = g.manor[bid];
         const cost = C.manorCost(bid, lv);
         let eff = '';
         if (bid === 'lingmai') eff = '主角品质：' + colorName(C.lingmaiColor(lv)) + '（' + C.lingmaiMult(lv).toFixed(1) + 'x）';
         if (bid === 'linggen') eff = '全体攻击/防御/生命 +' + (lv * 3) + '%';
-        if (bid === 'zuiyue') eff = '玉液 +' + (0.2 + lv * 0.22).toFixed(2) + '/秒';
         if (bid === 'fazhen') eff = '修为产出 x' + (1 + lv * 0.25).toFixed(2);
         if (bid === 'juling') eff = '闲置伙伴加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
         if (bid === 'gongfa') eff = '研习功法：主角攻击+' + (lv * 1.2).toFixed(1) + '% 速度+' + lv;
