@@ -86,12 +86,14 @@ body {
 
 /* 顶栏 */
 header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); border-bottom: 1px solid var(--line); padding: 10px 14px 8px; backdrop-filter: blur(6px); }
-#mytitle { display: flex; justify-content: space-between; align-items: center; }
-#mytitle b { color: var(--gold2); letter-spacing: 2px; font-size: 17px; }
-#realm-tag { font-size: 13px; color: var(--ink-dim); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
-.mt-right { display: flex; gap: 6px; align-items: center; }
-.hdr-name { color: var(--gold2); font-size: 13px; margin-left: 8px; letter-spacing: 1px; }
-#resbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+#mytitle { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+#mytitle .hdr-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hdr-name { color: var(--gold2); font-size: 13px; letter-spacing: 1px; font-weight: 700; }
+#hdr-res { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; justify-content: center; }
+#hdr-res .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
+#hdr-res .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
+#hdr-res .res .ico { color: var(--gold); }
+#music-btn { margin-left: auto; flex: 0 0 auto; }
 .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
 .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
 .res .ico { color: var(--gold); }
