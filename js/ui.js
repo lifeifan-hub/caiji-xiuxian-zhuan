@@ -17,7 +17,7 @@
 
   const S = {
     game: null, tab: 'main', race: null, elem: null,
-    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items',
+    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items', selUnit: 'hero',
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -237,11 +237,13 @@
       const u = units[i];
       if (u) {
         let name, realm, color, qBadge = '';
+        let ridx;
         if (u.isHero) {
           const race = RACE[g.race];
           name = g.heroName || race.name + '道友';
           realm = C.realmLabel(g);
           color = ELEMC[heroEl] || '#fff';
+          ridx = g.realm.idx;
         } else {
           const p = g.partners.find(x => x.iid === u.iid);
           const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
@@ -249,13 +251,16 @@
           realm = C.partnerRealmLabel(p);
           color = ELEMC[tpl.el] || '#fff';
           qBadge = '<span class="slot-q" style="color:' + qColor(tpl.q) + '">' + C.colorName(tpl.q) + '</span>';
+          ridx = p.realm.idx;
         }
-        row += '<div class="fm-slot filled" data-fm="' + u.iid + '"><div class="fm-name" style="color:' + color + '">' + qBadge + name + '</div><div class="fm-realm">' + realm + '</div></div>';
+        const selCls = S.selUnit === u.iid ? ' sel' : '';
+        const selStyle = S.selUnit === u.iid ? ' style="border-color:' + REALM_COLORS[ridx] + '; box-shadow:0 0 8px ' + REALM_COLORS[ridx] + '"' : '';
+        row += '<div class="fm-slot filled' + selCls + '" data-fm="' + u.iid + '"' + selStyle + '><div class="fm-name" style="color:' + color + '">' + qBadge + name + '</div><div class="fm-realm">' + realm + '</div></div>';
       } else {
         row += '<div class="fm-slot empty"><div class="fm-name">空位</div></div>';
       }
     }
-    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>点击方块下阵 · 去道友名下阵/上阵</small></div><div class="bf-fm-row">' + row + '</div></div>';
+    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>点击模块选中 · 在次元空间·道友 上阵/下阵</small></div><div class="bf-fm-row">' + row + '</div></div>';
   }
 
   function render() {
@@ -288,21 +293,50 @@
 
   function renderMain(v) {
     const g = S.game;
-    const st = C.unitStats(g, 'hero');
     const r = C.rates(g);
     const stage = g.mainline.stage;
-    const heroEl = g.heroEl;
-    const isMaxLayer = g.realm.layer >= 20;
-    const need = isMaxLayer ? C.tribulationCost(g) : C.layerCost(g);
-    const success = Math.round(C.realmChance(g) * 100);
-    const fail = 100 - success;
-
-    // 角色卡
     const race = RACE[g.race];
+    const selId = S.selUnit || 'hero';
+    let selName, selRealm, selEl, selIdx, selLayer, selNeed, selSuccess, selFail, selFailPct, actTrib, tribA, isMaxLayer, st;
+    if (selId === 'hero') {
+      st = C.unitStats(g, 'hero');
+      selName = g.heroName || race.name + '道友';
+      selRealm = C.realmLabel(g);
+      selEl = g.heroEl;
+      selIdx = g.realm.idx; selLayer = g.realm.layer;
+      isMaxLayer = g.realm.layer >= 20;
+      selNeed = isMaxLayer ? C.tribulationCost(g) : C.layerCost(g);
+      selSuccess = Math.round(C.realmChance(g) * 100);
+      selFail = 100 - selSuccess;
+      selFailPct = 10 + selIdx * 10;
+      actTrib = isMaxLayer ? 'trib' : 'layerup';
+      tribA = '';
+    } else {
+      const p = g.partners.find(x => x.iid === selId) || g.partners[0];
+      const tpl = p ? DATA.PARTNERS.find(x => x.id === p.pid) : null;
+      if (!p || !tpl) {
+        st = C.unitStats(g, 'hero');
+        selName = g.heroName || race.name + '道友'; selRealm = C.realmLabel(g); selEl = g.heroEl;
+        selIdx = g.realm.idx; selLayer = g.realm.layer; isMaxLayer = g.realm.layer >= 20;
+        selNeed = isMaxLayer ? C.tribulationCost(g) : C.layerCost(g);
+        selSuccess = Math.round(C.realmChance(g) * 100); selFail = 100 - selSuccess; selFailPct = 10 + selIdx * 10;
+        actTrib = isMaxLayer ? 'trib' : 'layerup'; tribA = '';
+      } else {
+        st = C.unitStats(g, p.iid);
+        selName = tpl.name; selRealm = C.partnerRealmLabel(p); selEl = tpl.el;
+        selIdx = p.realm.idx; selLayer = p.realm.layer; isMaxLayer = p.realm.layer >= 20;
+        selNeed = C.partnerLayerCost(p);
+        selSuccess = Math.round((0.95 - selIdx * 0.08) * 100); selFail = 100 - selSuccess; selFailPct = 10 + selIdx * 8;
+        actTrib = 'tribp'; tribA = ' data-a="' + p.iid + '"';
+      }
+    }
+    const barPct = isMaxLayer ? 100 : Math.min(100, Math.round(g.res.xiuwei / selNeed * 100));
+
+    // 角色卡（读取当前选中单位）
     v.innerHTML = `
       <div class="card">
         <div class="row xl">
-          <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
+          <div><b class="gold">${selName}</b> <span class="tag">${selRealm}</span></div>
           <div class="muted">战力 <b style="color:var(--gold)">${F(C.teamPower(g))}</b></div>
         </div>
         <div class="statsrow">
@@ -310,25 +344,25 @@
           <div class="stat"><span>攻击</span><b>${F(st.atk)}</b></div>
           <div class="stat"><span>物防/法防</span><b>${F(st.def)}</b></div>
           <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
-          <div class="stat"><span>五行</span><b style="color:${ELEMC[heroEl] || '#fff'}">${heroEl}</b></div>
+          <div class="stat"><span>五行</span><b style="color:${ELEMC[selEl] || '#fff'}">${selEl}</b></div>
         </div>
-        <div class="dim mt8">渡劫成功每提升一层，主角与上阵道友的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！</div>
+        <div class="dim mt8">${selId === 'hero' ? '渡劫成功每提升一层，主角与上阵道友的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！' : '当前查看道友：' + selName + '，渡劫提升其自身属性。'}</div>
       </div>
 
       <div class="card">
-        <div class="sec-title" style="margin:0">境界 <span class="muted">第${g.realm.layer}/20层</span></div>
-        <div class="bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${layerPct(g)}%"></i></div>
+        <div class="sec-title" style="margin:0">境界 <span class="muted">${selRealm} · 第${selLayer}/20层</span></div>
+        <div class="bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${barPct}%"></i></div>
         <div class="break-wrap">
-          <button class="break-btn${isMaxLayer ? ' break-btn-trib' : ''}" data-act="${isMaxLayer ? 'trib' : 'layerup'}">
+          <button class="break-btn${isMaxLayer ? ' break-btn-trib' : ''}" data-act="${actTrib}"${tribA}>
             <span class="break-ico">⚡</span>
             <span class="break-name">${isMaxLayer ? '渡劫 · 破大境' : '渡劫'}</span>
           </button>
           <div class="break-stats">
             <div><span class="dim">当前总修为</span><b class="green">${F(g.res.xiuwei)}</b></div>
-            <div><span class="dim">本阶段所需修为</span><b class="gold">${F(need)}</b></div>
-            <div><span class="dim">成功率</span><b class="green">${success}%</b></div>
-            <div><span class="dim">渡劫失败几率</span><b class="red">${fail}%</b></div>
-            <div class="dim mt8">渡劫丹×${g.items['渡劫丹'] || 0}（每次渡劫最多1颗·+8%）· 失败损失本阶段所需修为的${10 + g.realm.idx * 10}%</div>
+            <div><span class="dim">本阶段所需修为</span><b class="gold">${F(selNeed)}</b></div>
+            <div><span class="dim">成功率</span><b class="green">${selSuccess}%</b></div>
+            <div><span class="dim">渡劫失败几率</span><b class="red">${selFail}%</b></div>
+            <div class="dim mt8">渡劫丹×${g.items['渡劫丹'] || 0}（每次渡劫最多1颗·+8%）· 失败损失本阶段所需修为的${selFailPct}%</div>
           </div>
         </div>
       </div>
@@ -458,20 +492,6 @@
     }
     html += '</div><div class="dim mt8">点击聚灵阵中的道友可移出。</div></div>';
 
-    // 道友列表
-    html += '<div class="sec-title">道友名录</div>';
-    g.partners.forEach(p => {
-      const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-      const inF = g.formation.includes(p.iid);
-      const inJ = g.juling.includes(p.iid);
-      const st = C.unitStats(g, p.iid);
-      html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
-        '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
-        '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
-        '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫(修为' + F(C.partnerLayerCost(p)) + ')</button></div></div>';
-    });
     return html;
   }
 
@@ -793,6 +813,7 @@
       S.battleStage = r.stage;
       playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
     },
+    'sel': function (a) { S.selUnit = a; render(); },
     'cine': function () { playCine(); },
     'layerup': function () {
       const pills = S.game.items['渡劫丹'] || 0;
@@ -893,9 +914,9 @@
     // 聚灵阵点击移出
     const j = e.target.closest('[data-juling]');
     if (j) { act.jld(j.dataset.juling); return; }
-    // 上阵阵容点击下阵
+    // 上阵阵容点击选中
     const fm = e.target.closest('[data-fm]');
-    if (fm) { act.fld(fm.dataset.fm); return; }
+    if (fm) { act.sel(fm.dataset.fm); return; }
     // 阵容槽：点击已占用 → 下阵
     const sl = e.target.closest('[data-slot]');
     if (sl) {
