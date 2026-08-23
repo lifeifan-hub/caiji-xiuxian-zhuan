@@ -2368,7 +2368,7 @@ code.num { font-family: Consolas, monospace; }
             <div><span class="dim">成功率</span><b class="green">${selSuccess}%</b></div>
             <div><span class="dim">渡劫失败几率</span><b class="red">${selFail}%</b></div>
             <div class="dim mt8">渡劫丹×${g.items['渡劫丹'] || 0}（每次渡劫最多1颗·+8%）· 失败损失本阶段所需修为的${selFailPct}%</div>
-            ${selId === 'hero' ? '<div class="row mt8"><button class="btn btn-sm btn-blue" data-act="usepill">使用渡劫丹(单次)</button><button class="btn btn-sm ' + (S.autoPill ? 'btn-green' : '') + '" data-act="autopill">' + (S.autoPill ? '自动使用·开' : '自动使用·关') + '</button>' + (S.singlePill ? '<span class="green"> 已装备</span>' : '') + '</div>' : ''}
+            <div class="row mt8"><button class="btn btn-sm btn-blue" data-act="usepill">使用渡劫丹(单次)</button><button class="btn btn-sm ' + (S.autoPill ? 'btn-green' : '') + '" data-act="autopill">' + (S.autoPill ? '自动使用·开' : '自动使用·关') + '</button>' + (S.singlePill ? '<span class="green"> 已装备</span>' : '') + '</div>
           </div>
         </div>
       </div>
@@ -2863,7 +2863,7 @@ code.num { font-family: Consolas, monospace; }
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, false); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, S.autoPill || S.singlePill); S.singlePill = false; toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
