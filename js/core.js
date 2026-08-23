@@ -340,6 +340,10 @@
   }
 
   // ---------- 经济速率 ----------
+  // 醉月樽：8 樽对应 炼气→大乘 八境（渡劫无樽），达到境界自动解锁；每樽 60 琼浆玉液/分钟 = 1/秒
+  function zuiyueJarsUnlocked(state) {
+    return Math.min(8, (state.realm.idx || 0) + 1);
+  }
   function rates(state) {
     const realmMult = REALMS[state.realm.idx].mult;
     const fazhen = state.manor.fazhen;
@@ -352,8 +356,7 @@
     const copper = Math.round(
       3 + realmMult * 0.4 + stage * 0.5
     );
-    const zuiyue = state.manor.zuiyue;
-    const qiongjiang = (0.2 + zuiyue * 0.22); // /秒 较慢
+    const qiongjiang = zuiyueJarsUnlocked(state); // 每樽 1/秒
     const linggen = state.manor.linggen;
     const lingqi = (1 + linggen * 1.2) / 60; // /秒
     return { xiuwei, copper, qiongjiang, lingqi };
@@ -608,6 +611,7 @@
   }
   function upgradeManor(state, building) {
     const lv = state.manor[building];
+    if (building === 'zuiyue') return { ok:false, msg:'醉月樽随境界自动解锁，无需升级' };
     if (building === 'gongfa' && lv >= P.GONGFAS[state.race].length) return { ok:false, msg:'功法已研习完毕' };
     const cost = manorCost(building, lv);
     if (!payCost(state, cost)) return { ok:false, msg:'资源不足' };
@@ -1283,6 +1287,7 @@
     farmMainline,
     teamPower, formatDuration,
     layerCost, breakthroughLayer, layerName,
+    zuiyueJarsUnlocked,
     partnerTpl, partnerQ, pMaxLevel, slotName, colorName, qualityMult,
     lingmaiMult, lingmaiColor, elemMult, addItem, takeItem,
     helpers: { fmt, rndInt, pick, clamp }
