@@ -260,17 +260,15 @@
     market: {
       name: '普通集市', currency: 'copper',
       goods: [
-        { id: 'd', item: '渡劫丹', price: 500, qty: 1, limit: 0 },
-        { id: 'juyuan', item: '聚元丹', price: 200, qty: 1, limit: 0 },
-        { id: 'juling', item: '聚灵丹', price: 120, qty: 1, limit: 0 },
-        { id: 'qianghua', item: '强化石', price: 100, qty: 5, limit: 0 },
-        { id: 'jinglian', item: '精炼石', price: 150, qty: 5, limit: 0 },
-        { id: 'fuomo', item: '附魔石', price: 200, qty: 3, limit: 0 }
+        { id: 'qianghua', item: '强化石', price: 50000, qty: 1, limit: 0 },
+        { id: 'jinglian', item: '精炼石', price: 50000, qty: 1, limit: 0 },
+        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 }
       ]
     },
     purple: {
       name: '鸿蒙紫气阁', currency: 'ziqi',
       goods: [
+        { id: 'd', item: '渡劫丹', price: 15, qty: 1, limit: 0 },
         { id: 'zhao', item: '招募令', price: 6, qty: 1, limit: 0 },
         { id: 'jun', item: '金卡伙伴包', price: 30, qty: 1, limit: 3 },
         { id: 'hongdong', item: '红卡伙伴包', price: 100, qty: 1, limit: 1 },
@@ -279,13 +277,19 @@
         { id: 'qiang', item: '强化石·百', price: 15, qty: 100, limit: 0 }
       ]
     },
-    five: {
-      name: '五行天坊', currency: 'wuxing',
+    gongfa: {
+      name: '功法商店', currency: 'qiongjiang',
       goods: [
-        { id: 'wxs', item: '五行石', price: 10, qty: 1, limit: 0 },
-        { id: 'zhaoling', item: '招募令', price: 20, qty: 1, limit: 0 },
-        { id: 'linggen', item: '灵根升级券', price: 15, qty: 1, limit: 0 },
-        { id: 'mop', item: '五行装备箱', price: 40, qty: 1, limit: 3 }
+        { id: 'juyuan', item: '聚元丹', price: 6, qty: 1, limit: 0 },
+        { id: 'juling', item: '聚灵丹', price: 4, qty: 1, limit: 0 }
+      ]
+    },
+    fabao: {
+      name: '法宝商店', currency: 'fabao',
+      goods: [
+        { id: 'fabao', item: '随机法宝', price: 40, qty: 1, limit: 0 },
+        { id: 'qiang2', item: '强化石·百', price: 12, qty: 100, limit: 0 },
+        { id: 'lian2', item: '精炼石·百', price: 14, qty: 100, limit: 0 }
       ]
     }
   };
