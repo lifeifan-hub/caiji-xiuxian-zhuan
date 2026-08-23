@@ -225,7 +225,37 @@
       '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div>' +
       '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm" data-act="formation">🔀 布阵</button></div>' +
       '<div class="bf-mid">' + autoHtml + '</div>' +
-      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>';
+      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>' +
+      formationBoardHtml(g);
+  }
+
+  function formationBoardHtml(g) {
+    const units = C.formationUnits(g);
+    const heroEl = g.heroEl;
+    let row = '';
+    for (let i = 0; i < 6; i++) {
+      const u = units[i];
+      if (u) {
+        let name, realm, color, qBadge = '';
+        if (u.isHero) {
+          const race = RACE[g.race];
+          name = g.heroName || race.name + '道友';
+          realm = C.realmLabel(g);
+          color = ELEMC[heroEl] || '#fff';
+        } else {
+          const p = g.partners.find(x => x.iid === u.iid);
+          const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+          name = tpl.name;
+          realm = C.partnerRealmLabel(p);
+          color = ELEMC[tpl.el] || '#fff';
+          qBadge = '<span class="slot-q" style="color:' + qColor(tpl.q) + '">' + C.colorName(tpl.q) + '</span>';
+        }
+        row += '<div class="fm-slot filled" data-fm="' + u.iid + '"><div class="fm-name" style="color:' + color + '">' + qBadge + name + '</div><div class="fm-realm">' + realm + '</div></div>';
+      } else {
+        row += '<div class="fm-slot empty"><div class="fm-name">空位</div></div>';
+      }
+    }
+    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>点击方块下阵 · 去道友名下阵/上阵</small></div><div class="bf-fm-row">' + row + '</div></div>';
   }
 
   function render() {
@@ -411,29 +441,17 @@
   // ---------- 道友 ----------
   function renderPartner() {
     const g = S.game;
-    let html = '<div class="sec-title">道友·阵容搭配（速度/控制/治疗/五行克制是胜负核心）</div>';
+    let html = '<div class="sec-title">道友 · 名录与聚灵</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">招募</b> <span class="dim">招募令×' + (g.items['招募令'] || 0) + ' ／ 紫气' + F(g.res.ziqi) + '</span></div></div>' +
       '<div class="toolbar"><button class="btn btn-gold" data-act="sum" data-a="1">单抽（1令/30紫）</button><button class="btn btn-gold" data-act="sum" data-a="10">十连（10令/280紫）</button></div>' +
       '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复道友自动进阶★</div></div>';
-    // 阵容
-    html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/5</span></div><div class="slot-grid">';
-    for (let i = 0; i < 5; i++) {
-      const iid = g.formation[i];
-      if (iid) {
-        const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-        html += '<div class="f-slot" data-slot="' + i + '"><div class="pos">' + (i === 0 ? '前排' : '') + '</div><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>' + tpl.role + '·' + tpl.el + '</small></div>';
-      } else {
-        html += '<div class="f-slot empty" data-slot="' + i + '">空位</div>';
-      }
-    }
-    html += '</div><div class="dim mt8">点击道友下阵；先点的排前（越前越挨打，也越先出手）。</div></div>';
 
     // 聚灵阵
     html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置道友加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
     if (g.juling.length) {
       g.juling.forEach(iid => {
         const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-        html += '<div class="f-slot" data-juling="' + iid + '"><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>Lv.' + p.level + '</small></div>';
+        html += '<div class="f-slot" data-juling="' + iid + '"><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>' + C.partnerRealmLabel(p) + '</small></div>';
       });
     } else {
       html += '<div class="f-slot empty" style="grid-column:1/4">暂无极闲道友</div>';
@@ -536,7 +554,7 @@
     let html = '<div class="sec-title">装备 · 法宝</div>';
     // 单位选择
     html += '<div class="sec-tabs"><button class="btn ' + (unitKey === 'hero' ? 'btn-gold' : '') + '" data-act="equnit" data-a="hero">主角</button>';
-    g.formation.forEach(iid => { const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); html += '<button class="btn ' + (unitKey === iid ? 'btn-gold' : '') + '" data-act="equnit" data-a="' + iid + '">' + tpl.name + '</button>'; });
+    g.formation.forEach(iid => { const p = g.partners.find(x => x.iid === iid); if (!p) return; const tpl = DATA.PARTNERS.find(x => x.id === p.pid); html += '<button class="btn ' + (unitKey === iid ? 'btn-gold' : '') + '" data-act="equnit" data-a="' + iid + '">' + tpl.name + '</button>'; });
     html += '</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">' + unitName + ' 装备</b></div><span class="dim">品质：白绿蓝紫金红</span></div>';
     // 已装备槽
@@ -674,6 +692,12 @@
     const bf = document.querySelector('.battle-field');
     if (!bf) { if (onDone) onDone(); return; }
     S.animating = true;
+    // 每场新战斗：能量从 0 开始
+    bf.querySelectorAll('.slot:not(.empty)').forEach(slot => {
+      slot.__energy = 0;
+      const bar = slot.querySelector('.slot-energy i');
+      if (bar) bar.style.width = '0%';
+    });
     const roundEl = bf.querySelector('.bf-round');
     const slotEl = (side, idx) => bf.querySelector('[data-side="' + side + '"][data-idx="' + idx + '"]');
     const adjustHp = (el, delta) => {
@@ -803,11 +827,15 @@
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'tribp': function (a) { const r = C.partnerTribulate(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, (S.game.items['渡劫丹'] || 0) > 0); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5道友）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
+      else {
+        if (g.formation.length >= 6) { toast('上阵已满（最多6位）'); return; }
+        if (a !== 'hero' && g.juling.includes(a)) g.juling = g.juling.filter(x => x !== a);
+        g.formation.push(a);
+      }
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
@@ -865,6 +893,9 @@
     // 聚灵阵点击移出
     const j = e.target.closest('[data-juling]');
     if (j) { act.jld(j.dataset.juling); return; }
+    // 上阵阵容点击下阵
+    const fm = e.target.closest('[data-fm]');
+    if (fm) { act.fld(fm.dataset.fm); return; }
     // 阵容槽：点击已占用 → 下阵
     const sl = e.target.closest('[data-slot]');
     if (sl) {
