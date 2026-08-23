@@ -24,11 +24,11 @@
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const fmt = (n) => {
-    if (n < 1000) return String(Math.floor(n));
-    if (n < 1e6) return (n / 1e3).toFixed(1) + 'k';
-    if (n < 1e9) return (n / 1e6).toFixed(1) + 'M';
-    if (n < 1e12) return (n / 1e9).toFixed(1) + 'B';
-    return (n / 1e12).toFixed(2) + 'T';
+    n = Math.floor(Number(n) || 0);
+    if (n < 10000) return String(n);
+    if (n < 1e8) { const v = n / 1e4; return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + '万'; }
+    const v = n / 1e8;
+    return (v >= 100 ? Math.round(v) : Math.round(v * 100) / 100) + '亿';
   };
 
   // 五行克制
