@@ -297,7 +297,7 @@
             <div><span class="dim">本阶段所需修为</span><b class="gold">${F(need)}</b></div>
             <div><span class="dim">成功率</span><b class="green">${success}%</b></div>
             <div><span class="dim">突破失败几率</span><b class="red">${fail}%</b></div>
-            <div class="dim mt8">${isMaxLayer ? '渡劫丹×' + (g.items['渡劫丹'] || 0) + '（每颗+8%成功率）· 失败损失' + (10 + g.realm.idx * 2) + '%修为' : '突破下一层不失败，可无限攒修为'}</div>
+            <div class="dim mt8">${isMaxLayer ? '渡劫丹×' + (g.items['渡劫丹'] || 0) + '（每颗+8%成功率）· 失败损失本阶段所需修为的' + (10 + g.realm.idx * 10) + '%' : '突破下一层不失败，可无限攒修为'}</div>
           </div>
         </div>
       </div>
