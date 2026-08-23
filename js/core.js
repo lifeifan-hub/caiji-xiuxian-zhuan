@@ -107,7 +107,7 @@
     const iid = newId();
     const ex = state.itemDup || {};
     state.partners.push({
-      iid, pid: tpl.id, level: level || 1, stars: 0, equipped: {}
+      iid, pid: tpl.id, level: level || 1, stars: 0, equipped: {}, realm: { idx: 0, layer: 1 }
     });
     state.equipmentRef = state.equipmentRef || {};
     return iid;
@@ -148,6 +148,9 @@
     state.res = state.res || {};
     if (state.res.fabao == null) state.res.fabao = 0;
     if (state.res.qiongjiang == null) state.res.qiongjiang = 0;
+    (state.partners || []).forEach(p => {
+      if (!p.realm) p.realm = { idx: Math.min(8, Math.floor((p.level - 1) / 15)), layer: Math.max(1, 1 + Math.floor(((p.level - 1) % 15) * 19 / 15)) };
+    });
     return state;
   }
 
@@ -217,21 +220,19 @@
       if (!p) return null;
       const tpl = partnerTpl(p.pid);
       const qm = qualityMult(tpl.q);
-      const lvF = 0.7 + p.level * 0.09;
+      const grow = partnerGrow(p); // 道友独立境界成长
       let atk, def, hp, spd;
-      atk = tpl.atk * qm * lvF;
-      def = tpl.def * qm * lvF;
-      hp = tpl.hp * qm * lvF;
-      spd = tpl.spd + p.level * 0.9;
+      atk = tpl.atk * qm * grow;
+      def = tpl.def * qm * grow;
+      hp = tpl.hp * qm * grow;
+      spd = tpl.spd + (grow - 1) * 2.5;
       // 进阶 星星
       const starF = 1 + p.stars * 0.12;
       atk *= starF; def *= starF; hp *= starF;
-      // 道友也按境界成长一部分，保持大境界推进不掉队
-      const realmPt = Math.pow(realmMult, 0.80); // 道友也随渡劫层次成长，保持不掉队
       extra = {
-        hp: hp * realmPt,
-        atk: atk * realmPt,
-        def: def * realmPt,
+        hp: hp,
+        atk: atk,
+        def: def,
         spd: spd,
         quality: tpl.q,
         role: tpl.role,
@@ -318,13 +319,13 @@
   }
 
   function julingBonus(state) {
-    // 聚灵阵: 把闲置道友(quality, level)换算为全队百分比
+    // 聚灵阵: 把闲置道友(quality, 境界, 星星)换算为全队百分比
     let val = 0;
     state.juling.forEach(iid => {
       const p = state.partners.find(x => x.iid === iid);
       if (!p) return;
       const tpl = partnerTpl(p.pid);
-      val += tpl.q * 2 + p.level * 0.05 + p.stars * 2;
+      val += tpl.q * 2 + p.realm.idx * 2 + p.realm.layer * 0.1 + p.stars * 2;
     });
     return Math.min(50, val * 0.5);
   }
@@ -527,20 +528,30 @@
     return results;
   }
 
-  function upgradePartner(state, iid) {
+  function partnerLayerCost(p) {
+    const mult = REALMS[p.realm.idx].mult;
+    return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(p.realm.layer, 2.2));
+  }
+  function partnerTribulate(state, iid) {
     const p = state.partners.find(x => x.iid === iid);
     if (!p) return { ok: false, msg: '道友不存在' };
-    const tpl = partnerTpl(p.pid);
-    const maxLv = pMaxLevel(tpl.q);
-    if (p.level >= maxLv) return { ok: false, msg: '已满级' };
-    const cost = levelCost(p.level);
-    if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足' };
-    state.res.xiuwei -= cost;
-    p.level++;
-    recomputeStats(state);
-    return { ok: true, msg: p.level + ' 级' };
+    const idx = p.realm.idx, layer = p.realm.layer;
+    const cost = partnerLayerCost(p);
+    if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
+    const chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    const success = Math.random() < chance;
+    if (success) {
+      state.res.xiuwei -= cost;
+      p.realm.layer++;
+      if (p.realm.layer > 20) { p.realm.layer = 1; p.realm.idx = Math.min(8, idx + 1); }
+      recomputeStats(state);
+      return { ok: true, msg: '道友渡劫成功：' + partnerRealmLabel(p) };
+    }
+    const pct = 10 + idx * 8;
+    const lost = cost * pct / 100;
+    state.res.xiuwei -= lost;
+    return { ok: false, msg: '道友渡劫失败，损失本阶段所需修为的' + pct + '%（-' + fmt(lost) + '）' };
   }
-  function levelCost(level) { return Math.round(20 + Math.pow(level, 1.9) * 2); }
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
@@ -550,7 +561,7 @@
     recomputeStats(state);
   }
   function setJuling(state, ids) {
-    state.juling = ids.slice(0, 12);
+    state.juling = ids.slice(0, 3);
     state.juling.forEach(id => { if (state.formation.includes(id)) state.formation = state.formation.filter(x => x !== id); });
     recomputeStats(state);
   }
@@ -687,13 +698,13 @@
     const r = REALMS[state.realm.idx];
     return r.name + '·' + layerName(state.realm.layer) + '层';
   }
-  // 道友独立境界：按等级划分，品质越高可修到的境界越高（最高到渡劫）
+  // 道友独立境界
   function partnerRealmLabel(p) {
-    const LPR = 15; // 每 15 级一个大境界
-    const idx = Math.min(8, Math.floor((p.level - 1) / LPR));
-    const inRealm = (p.level - 1) % LPR;
-    const layer = Math.max(1, Math.min(20, 1 + Math.floor(inRealm * 19 / LPR)));
-    return REALMS[idx].name + '·' + layerName(layer) + '层';
+    return REALMS[p.realm.idx].name + '·' + layerName(p.realm.layer) + '层';
+  }
+  // 道友渡劫成长倍率（按自身境界变化）
+  function partnerGrow(p) {
+    return REALMS[p.realm.idx].mult * (1 + (p.realm.layer - 1) * 0.06);
   }
   function tribulationCost(state) {
     const idx = state.realm.idx;
@@ -1319,7 +1330,8 @@
     tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
-    summon, summonOne, upgradePartner, levelCost,
+    summon, summonOne,
+    partnerTribulate, partnerLayerCost,
     upgradeManor, manorCost, hasCost, payCost,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
     enhanceEquip, refineEquip, fumoEquip, equipTo, unequip,
