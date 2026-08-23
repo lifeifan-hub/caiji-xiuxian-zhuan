@@ -645,7 +645,7 @@
       '<div class="tc-beam"></div>' +
       '<div class="tc-burst"></div><div class="tc-shock"></div>' +
       '<div class="tc-streaks">' + streaks + '</div>' +
-      '<div class="tc-text"><div class="tc-title">渡劫成功</div><div class="tc-sub">五彩神光冲天 · 震撼苍穹</div></div></div>');
+      '<div class="tc-text"><div class="tc-title">渡劫成功</div></div></div>');
     document.body.appendChild(mask);
     setTimeout(() => { if (mask) mask.classList.add('fade-out'); }, 8900);
     setTimeout(() => { if (mask && mask.parentNode) mask.remove(); }, 9700);
