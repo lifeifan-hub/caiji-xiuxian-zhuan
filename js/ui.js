@@ -449,10 +449,10 @@
       const st = C.unitStats(g, p.iid);
       html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
         '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
+        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
         '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级(修为' + F(C.levelCost(p.level)) + ')</button></div></div>';
+        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫(修为' + F(C.partnerLayerCost(p)) + ')</button></div></div>';
     });
     return html;
   }
@@ -503,10 +503,10 @@
       const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid);
       html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
         '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
+        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
         '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级</button></div></div>';
+        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫</button></div></div>';
     });
     html += '</div>';
     return html;
@@ -697,10 +697,6 @@
       const aSide = ev.team === 'ally' ? 0 : 1;
       const aEl = slotEl(aSide, ev.idx);
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
-      if (aEl && ev.energy !== undefined) {
-        const bar = aEl.querySelector('.slot-energy i');
-        if (bar) { bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
-      }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
         const tEl = slotEl(tSide, t.idx);
@@ -807,7 +803,7 @@
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'plv': function (a) { const r = C.upgradePartner(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
@@ -817,7 +813,11 @@
     'jld': function (a) {
       const g = S.game;
       if (g.juling.includes(a)) { g.juling = g.juling.filter(x => x !== a); }
-      else { if (g.juling.length >= 12) { toast('聚灵阵已满'); return; } g.juling.push(a); g.formation = g.formation.filter(x => x !== a); }
+      else {
+        if (g.formation.includes(a)) { toast('上阵中的道友请先下阵，才能放入聚灵阵'); return; }
+        if (g.juling.length >= 3) { toast('聚灵阵最多容3位闲置道友'); return; }
+        g.juling.push(a);
+      }
       C.recomputeStats(g); C.save(g); render();
     },
     'equnit': function (a) { S.equipUnit = a; render(); },
@@ -877,7 +877,7 @@
   let tickCounter = 0;
   // 能量条：持续注满循环，满后释放专属技能
   setInterval(() => {
-    if (!S.game || S.animating) return;
+    if (!S.game) return;
     const bf = document.querySelector('.battle-field');
     if (!bf) return;
     bf.querySelectorAll('.slot:not(.empty)').forEach(slot => {
