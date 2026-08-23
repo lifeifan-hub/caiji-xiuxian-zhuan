@@ -633,7 +633,29 @@
     if (onDone) onDone();
   }
 
-  // 渡劫破境全屏动画：雷电交加、化龙升空、扶摇直上九万里
+  // 渡劫破境全屏动画：雷电交加、神龙旋转升空、扶摇直上九万里
+  const DRAGON_SVG = '<svg viewBox="0 0 260 330" width="250" xmlns="http://www.w3.org/2000/svg" style="display:block"><defs>' +
+    '<linearGradient id="gbd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe49a"/><stop offset="0.5" stop-color="#f0b03a"/><stop offset="1" stop-color="#c47d24"/></linearGradient>' +
+    '<linearGradient id="gfin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fe0e8" stop-opacity="0.85"/><stop offset="1" stop-color="#3a8fa0" stop-opacity="0.45"/></linearGradient>' +
+    '<filter id="dglow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' +
+    '<g filter="url(#dglow)">' +
+    '<ellipse cx="100" cy="296" rx="78" ry="20" fill="#bfe0ff" opacity="0.22"/><ellipse cx="196" cy="306" rx="66" ry="17" fill="#cfe7ff" opacity="0.2"/>' +
+    '<path d="M26,304 C 16,252 128,236 126,182 C 124,132 58,152 66,98 C 72,48 132,40 174,60" fill="none" stroke="url(#gbd)" stroke-width="26" stroke-linecap="round"/>' +
+    '<path d="M26,304 C 16,252 128,236 126,182 C 124,132 58,152 66,98 C 72,48 132,40 174,60" fill="none" stroke="#ffe9a6" stroke-width="7" stroke-linecap="round" opacity="0.75"/>' +
+    '<path d="M26,304 C 20,312 12,320 2,318" fill="none" stroke="url(#gbd)" stroke-width="14" stroke-linecap="round"/>' +
+    '<path d="M52,258 C 42,244 56,240 66,248 Z" fill="url(#gfin)"/><path d="M96,210 C 84,198 100,192 110,202 Z" fill="url(#gfin)"/><path d="M112,158 C 102,146 118,140 128,150 Z" fill="url(#gfin)"/>' +
+    '<path d="M174,60 L 216,40 C 228,33 236,41 230,52 L 210,70 C 202,76 188,74 180,68 Z" fill="url(#gbd)"/>' +
+    '<path d="M174,60 L 150,74 C 142,80 146,90 158,86 L 176,74 Z" fill="url(#gbd)"/>' +
+    '<path d="M188,46 C 194,24 206,14 218,8" fill="none" stroke="#ecc25a" stroke-width="6" stroke-linecap="round"/>' +
+    '<path d="M176,44 C 174,24 160,14 150,10" fill="none" stroke="#ecc25a" stroke-width="5" stroke-linecap="round"/>' +
+    '<path d="M220,52 C 240,54 250,66 254,82" fill="none" stroke="#ffe6b0" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M218,60 C 240,66 244,80 244,96" fill="none" stroke="#ffe6b0" stroke-width="3" stroke-linecap="round"/>' +
+    '<circle cx="194" cy="52" r="4" fill="#fff"/><circle cx="195" cy="52" r="2" fill="#7a3b00"/>' +
+    '<path d="M58,168 C 50,162 40,160 30,163" fill="none" stroke="#f0b04a" stroke-width="7" stroke-linecap="round"/>' +
+    '<path d="M92,132 C 84,124 72,120 62,121" fill="none" stroke="#f0b04a" stroke-width="7" stroke-linecap="round"/>' +
+    '<path d="M114,152 C 104,148 92,148 82,152" fill="none" stroke="#f0b04a" stroke-width="7" stroke-linecap="round"/>' +
+    '<path d="M108,222 a10,10 0 1 1 20,0" fill="none" stroke="#cf8a2a" stroke-width="3"/><path d="M78,196 a9,9 0 1 1 18,0" fill="none" stroke="#cf8a2a" stroke-width="3"/>' +
+    '</g></svg>';
   function playCine() {
     if (document.getElementById('tribcine')) return;
     let streaks = '';
@@ -646,11 +668,11 @@
       bolts += '<svg class="tc-bolt" style="left:' + l + '%; height:' + h + 'px; animation-delay:' + d + 's" width="42" viewBox="0 0 42 200"><polyline points="16,0 34,60 10,72 32,150 18,200" fill="none" stroke="#cfe4ff" stroke-width="3"/></svg>';
     }
     const mask = el('<div id="tribcine" class="tribcine"><div class="tc-ray"></div><div class="tc-flash"></div>' + bolts +
-      '<div class="tc-dragon">🐉</div><div class="tc-flow"></div><div class="tc-streaks">' + streaks + '</div>' +
+      '<div class="tc-dragon"><div class="tc-dragon-inner">' + DRAGON_SVG + '</div></div><div class="tc-flow"></div><div class="tc-streaks">' + streaks + '</div>' +
       '<div class="tc-text"><div class="tc-title">渡劫成功</div><div class="tc-sub">化龙升空 · 扶摇直上九万里</div></div></div>');
     document.body.appendChild(mask);
-    setTimeout(() => { if (mask) mask.classList.add('fade-out'); }, 5000);
-    setTimeout(() => { if (mask && mask.parentNode) mask.remove(); }, 5900);
+    setTimeout(() => { if (mask) mask.classList.add('fade-out'); }, 6800);
+    setTimeout(() => { if (mask && mask.parentNode) mask.remove(); }, 7600);
   }
 
   const act = {
