@@ -606,6 +606,7 @@
       const limitStr = gd.limit ? '（限购' + gd.limit + '）' : '';
       html += '<div class="shop-item"><span>' + gd.item + (gd.qty > 1 ? ' x' + gd.qty : '') + '</span><span><span class="price">' + gd.price + ' ' + curName + '</span><button class="btn btn-sm btn-blue" data-act="buy" data-a="' + S.shop + '" data-b="' + gd.id + '">购买' + limitStr + '</button></span></div>';
     });
+    if (!shop.goods.length) html += '<div class="card dim mt8">暂无商品 · 敬请期待</div>';
     v.innerHTML = html;
   }
 
