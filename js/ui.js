@@ -274,7 +274,7 @@
           <div class="muted">战力 <b style="color:var(--gold)">${F(C.teamPower(g))}</b></div>
         </div>
         <div class="statsrow">
-          <div class="stat"><span>生命</span><b>${F(st.hp)}</b></div>
+          <div class="stat"><span>生命</span><b>${Math.round(st.hp)}</b></div>
           <div class="stat"><span>攻击</span><b>${F(st.atk)}</b></div>
           <div class="stat"><span>物防/法防</span><b>${F(st.def)}</b></div>
           <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
@@ -434,7 +434,7 @@
       const st = C.unitStats(g, p.iid);
       html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
         '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + F(st.hp) + '</small></div>' +
+        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
         '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
         '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级(修为' + F(C.levelCost(p.level)) + ')</button></div></div>';
