@@ -333,7 +333,7 @@ code.num { font-family: Consolas, monospace; }
 <script>
 /* ============================================================
  * 菜鸡修仙传 · 数据层 (DATA)
- * 所有静态配置：种族 / 境界 / 伙伴 / 装备 / 法宝 / 敌人 / 道具 / 商店
+ * 所有静态配置：种族 / 境界 / 道友 / 装备 / 法宝 / 敌人 / 道具 / 商店
  * 通过 globalThis.CJ.P 暴露，浏览器与 Node 均可加载。
  * ============================================================ */
 (function () {
@@ -391,7 +391,7 @@ code.num { font-family: Consolas, monospace; }
   // ---------- 五行本源石用途 ----------
   const ELEM_NAME = { 金: '庚金', 木: '甲木', 水: '癸水', 火: '丙火', 土: '戊土' };
 
-  // ---------- 伙伴库 ----------
+  // ---------- 道友库 ----------
   // quality: 2=蓝 3=紫 4=金 5=红
   // role: atk/tank/heal/ctrl
   const PARTNERS = [
@@ -569,7 +569,7 @@ code.num { font-family: Consolas, monospace; }
 
   // ---------- 道具 ----------
   const ITEMS = {
-    '招募令': { name: '招募令', desc: '招募伙伴。可单抽/十连。' },
+    '招募令': { name: '招募令', desc: '招募道友。可单抽/十连。' },
     '渡劫丹': { name: '渡劫丹', desc: '渡劫时每颗提升8%成功率。' },
     '聚元丹': { name: '聚元丹', desc: '立刻获得当前境界一小时修为。' },
     '聚灵丹': { name: '聚灵丹', desc: '立刻获得500灵气。' },
@@ -602,12 +602,9 @@ code.num { font-family: Consolas, monospace; }
       name: '鸿蒙紫气阁', currency: 'ziqi',
       goods: [
         { id: 'd', item: '渡劫丹', price: 15, qty: 1, limit: 0 },
-        { id: 'zhao', item: '招募令', price: 6, qty: 1, limit: 0 },
-        { id: 'jun', item: '金卡伙伴包', price: 30, qty: 1, limit: 3 },
-        { id: 'hongdong', item: '红卡伙伴包', price: 100, qty: 1, limit: 1 },
-        { id: 'xian', item: '仙品装备箱', price: 50, qty: 1, limit: 5 },
-        { id: 'lian', item: '精炼石·百', price: 20, qty: 100, limit: 0 },
-        { id: 'qiang', item: '强化石·百', price: 15, qty: 100, limit: 0 }
+        { id: 'zhao', item: '招募令', price: 200, qty: 1, limit: 0 },
+        { id: 'jun', item: '金卡道友包', price: 1000, qty: 1, limit: 0 },
+        { id: 'hongdong', item: '红卡道友包', price: 3000, qty: 1, limit: 0 }
       ]
     },
     gongfa: {
@@ -633,7 +630,7 @@ code.num { font-family: Consolas, monospace; }
     lingmai: { name: '灵脉', res: '琼浆', desc: '主角核心：提升主角品质颜色', baseHr: 0 },
     linggen: { name: '灵根', res: '灵气', desc: '全体攻防血百分比加成', baseHr: 4 },
     fazhen: { name: '法阵', res: '修为', desc: '挂机修为产出提升', baseHr: 5 },
-    juling: { name: '聚灵阵', res: '修为', desc: '闲置伙伴按比例加成全队', baseHr: 0 },
+    juling: { name: '聚灵阵', res: '修为', desc: '闲置道友按比例加成全队', baseHr: 0 },
     gongfa: { name: '功法', res: '修为', desc: '研习主角主动被动功法', baseHr: 0 },
     qiankun: { name: '造化乾坤殿', res: '灵气', desc: '丹房炼丹 + 器宝炼器', baseHr: 0 }
   };
@@ -707,7 +704,7 @@ code.num { font-family: Consolas, monospace; }
       hero: { level: 1, exp: 0 },
       partners: [],
       formation: [], // instId 列表，顺序=站位(前排在先)
-      juling: [],    // 聚灵阵置闲伙伴
+      juling: [],    // 聚灵阵置闲道友
       equipment: [], // 装备实例
       equipped: {},  // instId -> unitRefKey('hero' | partnerInstId)
       fabao: [],     // {id, count}
@@ -728,7 +725,7 @@ code.num { font-family: Consolas, monospace; }
       seq: 1
     };
     state.items['招募令'] = 5; // 开局赠送几次招募
-    // 赠送一个引导伙伴（根据种族给不同初始伙伴）
+    // 赠送一个引导道友（根据种族给不同初始道友）
     const starter = starterPartner(race);
     addPartner(state, starter, 1);
     addPartner(state, pickBluePartner(), 1);
@@ -739,7 +736,7 @@ code.num { font-family: Consolas, monospace; }
   }
 
   function starterPartner(race) {
-    // 种族对应初始伙伴
+    // 种族对应初始道友
     const map = { human: 'b05', demon: 'b02', dragon: 'b06', elf: 'b03' };
     return P.PARTNERS.find(p => p.id === map[race]);
   }
@@ -874,8 +871,8 @@ code.num { font-family: Consolas, monospace; }
       // 进阶 星星
       const starF = 1 + p.stars * 0.12;
       atk *= starF; def *= starF; hp *= starF;
-      // 伙伴也按境界成长一部分，保持大境界推进不掉队
-      const realmPt = Math.pow(realmMult, 0.80); // 伙伴也随渡劫层次成长，保持不掉队
+      // 道友也按境界成长一部分，保持大境界推进不掉队
+      const realmPt = Math.pow(realmMult, 0.80); // 道友也随渡劫层次成长，保持不掉队
       extra = {
         hp: hp * realmPt,
         atk: atk * realmPt,
@@ -966,7 +963,7 @@ code.num { font-family: Consolas, monospace; }
   }
 
   function julingBonus(state) {
-    // 聚灵阵: 把闲置伙伴(quality, level)换算为全队百分比
+    // 聚灵阵: 把闲置道友(quality, level)换算为全队百分比
     let val = 0;
     state.juling.forEach(iid => {
       const p = state.partners.find(x => x.iid === iid);
@@ -1139,7 +1136,7 @@ code.num { font-family: Consolas, monospace; }
     return false;
   }
 
-  // ---------- 伙伴招募 ----------
+  // ---------- 道友招募 ----------
   function summonOne(state, cost, minQ) {
     // 品质权重
     const w = [0, 0, 0.55, 0.30, 0.13, 0.02];
@@ -1158,7 +1155,7 @@ code.num { font-family: Consolas, monospace; }
     const existing = state.partners.find(p => p.pid === tpl.id);
     let label;
     if (existing) {
-      existing.stars += 1; label = '重复伙伴→' + tpl.name + ' 进阶+1★';
+      existing.stars += 1; label = '重复道友→' + tpl.name + ' 进阶+1★';
     } else {
       addPartner(state, tpl, 1);
       label = '招募到 ' + tpl.name + '（' + colorName(q) + '·' + P.ROLES[tpl.role] + '·' + tpl.el + '）';
@@ -1177,7 +1174,7 @@ code.num { font-family: Consolas, monospace; }
 
   function upgradePartner(state, iid) {
     const p = state.partners.find(x => x.iid === iid);
-    if (!p) return { ok: false, msg: '伙伴不存在' };
+    if (!p) return { ok: false, msg: '道友不存在' };
     const tpl = partnerTpl(p.pid);
     const maxLv = pMaxLevel(tpl.q);
     if (p.level >= maxLv) return { ok: false, msg: '已满级' };
@@ -1398,8 +1395,8 @@ code.num { font-family: Consolas, monospace; }
   }
   function grantShopGood(state, good) {
     const item = good.item;
-    if (item === '金卡伙伴包') { summonOne(state, null, 4); return; }
-    if (item === '红卡伙伴包') { summonOne(state, null, 5); return; }
+    if (item === '金卡道友包') { summonOne(state, null, 4); return; }
+    if (item === '红卡道友包') { summonOne(state, null, 5); return; }
     if (item === '仙品装备箱' || item === '五行装备箱') { const e = genEquip(state, item === '仙品装备箱' ? 3 : 3); state.equipment.push(e); return; }
     if (item === '随机法宝') { const fid = pick(Object.keys(P.FABAO)); const ex = state.fabao.find(x => x.id === fid); if (ex) ex.count++; else state.fabao.push({ id: fid, count: 1 }); return; }
     addItem(state, item, good.qty || 1);
@@ -2110,7 +2107,7 @@ code.num { font-family: Consolas, monospace; }
   const NAV = [
     { id: 'main', ico: '☯', name: '修仙' },
     { id: 'manor', ico: '府', name: '仙府' },
-    { id: 'partner', ico: '友', name: '伙伴' },
+    { id: 'partner', ico: '友', name: '道友' },
     { id: 'equip', ico: '剑', name: '装备' },
     { id: 'dungeon', ico: '战', name: '副本' },
     { id: 'shop', ico: '市', name: '仙宝阁' },
@@ -2259,7 +2256,7 @@ code.num { font-family: Consolas, monospace; }
           <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
           <div class="stat"><span>五行</span><b style="color:${ELEMC[heroEl] || '#fff'}">${heroEl}</b></div>
         </div>
-        <div class="dim mt8">渡劫成功每提升一层，主角与上阵伙伴的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！</div>
+        <div class="dim mt8">渡劫成功每提升一层，主角与上阵道友的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！</div>
       </div>
 
       <div class="card">
@@ -2340,7 +2337,7 @@ code.num { font-family: Consolas, monospace; }
         if (bid === 'lingmai') eff = '主角品质：' + colorName(C.lingmaiColor(lv)) + '（' + C.lingmaiMult(lv).toFixed(1) + 'x）';
         if (bid === 'linggen') eff = '全体攻击/防御/生命 +' + (lv * 3) + '%';
         if (bid === 'fazhen') eff = '修为产出 x' + (1 + lv * 0.25).toFixed(2);
-        if (bid === 'juling') eff = '闲置伙伴加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
+        if (bid === 'juling') eff = '闲置道友加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
         if (bid === 'gongfa') eff = '研习功法：主角攻击+' + (lv * 1.2).toFixed(1) + '% 速度+' + lv;
         if (bid === 'qiankun') eff = '炼丹炼器等级 +' + lv + '，解锁更高阶';
         const costStr = costText(cost);
@@ -2382,13 +2379,13 @@ code.num { font-family: Consolas, monospace; }
     return a.join(' / ') || '免费';
   }
 
-  // ---------- 伙伴 ----------
+  // ---------- 道友 ----------
   function renderPartner(v) {
     const g = S.game;
-    let html = '<div class="sec-title">伙伴·阵容搭配（速度/控制/治疗/五行克制是胜负核心）</div>';
+    let html = '<div class="sec-title">道友·阵容搭配（速度/控制/治疗/五行克制是胜负核心）</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">招募</b> <span class="dim">招募令×' + (g.items['招募令'] || 0) + ' ／ 紫气' + F(g.res.ziqi) + '</span></div></div>' +
       '<div class="toolbar"><button class="btn btn-gold" data-act="sum" data-a="1">单抽（1令/30紫）</button><button class="btn btn-gold" data-act="sum" data-a="10">十连（10令/280紫）</button></div>' +
-      '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复伙伴自动进阶★</div></div>';
+      '<div class="dim">品质 蓝→紫→金→红 · 保底：10抽必出金 · 重复道友自动进阶★</div></div>';
     // 阵容
     html += '<div class="card"><div class="sec-title" style="margin:0">上阵阵容 <span class="muted">' + g.formation.length + '/5</span></div><div class="slot-grid">';
     for (let i = 0; i < 5; i++) {
@@ -2400,22 +2397,22 @@ code.num { font-family: Consolas, monospace; }
         html += '<div class="f-slot empty" data-slot="' + i + '">空位</div>';
       }
     }
-    html += '</div><div class="dim mt8">点击伙伴下阵；先点的排前（越前越挨打，也越先出手）。</div></div>';
+    html += '</div><div class="dim mt8">点击道友下阵；先点的排前（越前越挨打，也越先出手）。</div></div>';
 
     // 聚灵阵
-    html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置伙伴加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
+    html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置道友加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
     if (g.juling.length) {
       g.juling.forEach(iid => {
         const p = g.partners.find(x => x.iid === iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
         html += '<div class="f-slot" data-juling="' + iid + '"><h5 style="color:' + qColor(tpl.q) + '">' + tpl.name + '</h5><small>Lv.' + p.level + '</small></div>';
       });
     } else {
-      html += '<div class="f-slot empty" style="grid-column:1/4">暂无极闲伙伴</div>';
+      html += '<div class="f-slot empty" style="grid-column:1/4">暂无极闲道友</div>';
     }
-    html += '</div><div class="dim mt8">点击聚灵阵中的伙伴可移出。</div></div>';
+    html += '</div><div class="dim mt8">点击聚灵阵中的道友可移出。</div></div>';
 
-    // 伙伴列表
-    html += '<div class="sec-title">伙伴名录</div>';
+    // 道友列表
+    html += '<div class="sec-title">道友名录</div>';
     g.partners.forEach(p => {
       const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
       const inF = g.formation.includes(p.iid);
@@ -2523,12 +2520,12 @@ code.num { font-family: Consolas, monospace; }
     const g = S.game;
     v.innerHTML = '<div class="sec-title">更多</div>' +
       '<div class="card"><div class="sec-title" style="margin:0">玩法要诀</div><div class="help-block">' +
-      '<p><b>【循环】</b>挂机攒资源 → 仙府/伙伴/装备/功法 → 推主线 → 副本/活动 → 渡劫突破 → 冲击更高关卡。</p>' +
+      '<p><b>【循环】</b>挂机攒资源 → 仙府/道友/装备/功法 → 推主线 → 副本/活动 → 渡劫突破 → 冲击更高关卡。</p>' +
       '<p><b>【种族】</b>人族控制、魔族爆发、龙人肉盾、精灵续航，玩法各异。</p>' +
       '<p><b>【战斗】</b>回合文字战斗。看速度、控制（晕/冻/沉默）、治疗、五行克制。<b>硬扛打不过，要靠先手控住敌人。</b></p>' +
       '<p><b>【仙府】</b>资源根基。灵脉决定主角品质；灵根、法阵、聚灵阵、功法、乾坤殿全面提升。</p>' +
       '<p><b>【渡劫】</b>每大境界20小层，每层与破大境都需渡劫。炼气成功率95%，每提升一大境界-10%；失败损失“本阶段所需修为”的10%起、每大境界+10%；渡劫丹每次渡劫最多1颗、+8%成功率。</p>' +
-      '<p><b>【伙伴】</b>招募令/紫气抽卡，蓝紫金红；多余伙伴进聚灵阵加成全队。</p>' +
+      '<p><b>【道友】</b>招募令/紫气抽卡，蓝紫金红；多余道友进聚灵阵加成全队。</p>' +
       '<p><b>【灵石】</b>水月洞天刷法宝碎片、五行山拿五行石、每日副本扫荡。</p>' +
       '</div></div>' +
       '<div class="card"><div class="sec-title" style="margin:0">兑换激活码</div>' +
@@ -2713,7 +2710,7 @@ code.num { font-family: Consolas, monospace; }
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5伙伴）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
+      else { if (g.formation.length >= 5) { toast('上阵已满（1主角+5道友）'); return; } g.formation.push(a); g.juling = g.juling.filter(x => x !== a); }
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
