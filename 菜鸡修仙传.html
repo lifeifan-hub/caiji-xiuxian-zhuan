@@ -229,9 +229,17 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .stat-top .ico { margin-right: 3px; }
 .stat-top b { color: var(--ink); }
 .stat-top .st-name { color: var(--gold2); font-weight: 700; }
-.battle-field { position: relative; height: 32vh; min-height: 200px; max-height: 300px; background: radial-gradient(900px 240px at 50% 0%, #2a2050, #120d24); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; padding: 32px 10px 10px; }
+.battle-field { position: relative; height: 32vh; min-height: 200px; max-height: 300px; background: radial-gradient(900px 240px at 50% 0%, #2a2050, #120d24); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; padding: 32px 10px 10px; display: flex; flex-direction: column; }
 .bf-round { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--gold); border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: rgba(0,0,0,.4); }
-.bf-body { display: flex; gap: 6px; height: 100%; align-items: stretch; }
+.bf-body { flex: 1; display: flex; gap: 6px; align-items: stretch; min-height: 0; }
+.bf-ctrl { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.bf-ctrl > div { display: flex; align-items: center; }
+.bf-left { flex: 1; }
+.bf-mid { flex: 1; justify-content: center; }
+.bf-right { flex: 1; justify-content: flex-end; }
+.bf-auto { font-size: 12px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; white-space: nowrap; }
+.bf-auto input { accent-color: var(--gold); width: 15px; height: 15px; cursor: pointer; }
+.bf-auto small { color: var(--dim); font-size: 10px; }
 .bf-side { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 6px; align-content: space-evenly; }
 .slot { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
 .slot-name { font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1763,6 +1771,33 @@ code.num { font-family: Consolas, monospace; }
     return { ok: false, stage, res, retreated: true };
   }
 
+  // 挂机当前关卡：胜利只拿奖励不推进；打不过则退回上一层继续挂机
+  function farmMainline(state, cb) {
+    const stage = state.mainline.stage;
+    const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
+    const enemyUnits = enemyForStage(stage);
+    const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
+    if (res.winner === 'ally') {
+      const rw = stageReward(state);
+      state.res.xiuwei += rw.xiuwei;
+      state.res.copper += rw.copper;
+      if (stage % 10 === 0) {
+        const zi = 8 + state.realm.idx * 4;
+        state.res.ziqi += zi;
+        if (cb) cb({ msg: '击败 Boss！获得鸿蒙紫气 +' + zi, cls: 'loot' });
+      }
+      if (Math.random() < rw.equipChance) {
+        const e = genEquip(state, qualityForStage(stage));
+        state.equipment.push(e);
+        if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
+      }
+      return { ok: true, stage, reward: rw, res, farmed: true };
+    }
+    state.mainline.stage = Math.max(1, state.mainline.stage - 1);
+    if (cb) cb({ msg: (res.timeout ? '30 回合未击破' : '队伍被击败') + '，退回第 ' + state.mainline.stage + ' 关继续挂机！', cls: 'system' });
+    return { ok: false, stage, res, retreated: true };
+  }
+
   // ---------- 水月洞天 ----------
   function shuiyueStage(state) {
     const boss = state.dungeons.shuiyue.bestBoss + 1;
@@ -1864,6 +1899,7 @@ code.num { font-family: Consolas, monospace; }
     craftFabao, equipFabao, fabaoBonus,
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
+    farmMainline,
     teamPower, formatDuration,
     layerCost, breakthroughLayer, layerName,
     partnerTpl, partnerQ, pMaxLevel, slotName, colorName, qualityMult,
@@ -1892,7 +1928,7 @@ code.num { font-family: Consolas, monospace; }
   const S = {
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build',
-    logMain: [], logDungeon: [], autoPush: true, battleRounds: 0, animating: false,
+    logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
 
@@ -2085,8 +2121,15 @@ code.num { font-family: Consolas, monospace; }
     let eh = '';
     enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
-    return '<div class="battle-field"><div class="bf-round"><span>' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
-      '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div></div>';
+    const autoUnlocked = stage >= 30;
+    const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
+      (S.autoPush ? ' checked' : '') + (autoUnlocked ? '' : ' disabled') + '> 自动推关' +
+      (autoUnlocked ? '' : '<small>(30关解锁)</small>') + '</span>';
+    return '<div class="battle-field"><div class="bf-round"><span>第 ' + stage + ' 关 · ' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
+      '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div>' +
+      '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm" data-act="formation">🔀 布阵</button></div>' +
+      '<div class="bf-mid">' + autoHtml + '</div>' +
+      '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>';
   }
 
   function render() {
@@ -2125,15 +2168,6 @@ code.num { font-family: Consolas, monospace; }
     // 角色卡
     const race = RACE[g.race];
     v.innerHTML = `
-      <div class="card">
-        <div class="row"><div><b class="gold">主线·成仙之路</b></div><span class="tag">第 ${stage} 关</span></div>
-        <div class="toolbar">
-          <button class="btn btn-gold" data-act="push">挑战下一层（${stage}）</button>
-          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关·开' : '自动推关·关'}</button>
-        </div>
-        <div class="dim">30回合内未击破敌人即挑战失败，并退回上一层自动挂机；按速度先后出手，全员出手一次算一回合。</div>
-      </div>
-
       <div class="card">
         <div class="row xl">
           <div><b class="gold">${g.heroName ? g.heroName : race.name + '道友'}</b> <span class="tag">${race.name} · ${C.realmLabel(g)}</span></div>
@@ -2176,7 +2210,6 @@ code.num { font-family: Consolas, monospace; }
         </div>
         <div class="row mt8">
           <span class="muted">仙府法阵/境界/关卡越高，挂机越多</span>
-          <button class="btn btn-sm ${S.autoPush ? 'btn-green' : ''}" data-act="auto">${S.autoPush ? '自动推关：开' : '自动推关：关'}</button>
         </div>
       </div>
 
@@ -2468,7 +2501,10 @@ code.num { font-family: Consolas, monospace; }
       el.classList.toggle('dead', cur <= 0);
     };
     for (const ev of events) {
-      if (ev.type === 'round') { if (roundEl) roundEl.textContent = ev.n + '/30回合'; await sleep(150); continue; }
+      if (ev.type === 'round') {
+        if (roundEl) roundEl.textContent = '第 ' + (S.battleStage || (S.game && S.game.mainline.stage) || '') + ' 关 · ' + ev.n + '/30回合';
+        await sleep(150); continue;
+      }
       const aSide = ev.team === 'ally' ? 0 : 1;
       const aEl = slotEl(aSide, ev.idx);
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
@@ -2526,10 +2562,28 @@ code.num { font-family: Consolas, monospace; }
       if (S.animating) return;
       const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
       S.battleRounds = (r.res && r.res.rounds) || 0;
+      S.battleStage = r.stage;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
       playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
     },
-    'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
+    'auto': function () {
+      if (S.game.mainline.stage < 30) { toast('自动推关需先通关第30关后解锁'); return; }
+      S.autoPush = !S.autoPush; C.save(S.game); render();
+    },
+    'formation': function () {
+      if (S.animating) return;
+      const g = S.game;
+      const arr = g.formation.slice();
+      for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+      g.formation = arr;
+      C.recomputeStats(g);
+      C.save(g);
+      toast('已随机调整站位，重新开战！');
+      const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+      S.battleRounds = (r.res && r.res.rounds) || 0;
+      S.battleStage = r.stage;
+      playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
+    },
     'cine': function () { playCine(); },
     'layerup': function () {
       const pills = S.game.items['渡劫丹'] || 0;
@@ -2626,17 +2680,18 @@ code.num { font-family: Consolas, monospace; }
     if (!S.game) return;
     const g = S.game;
     C.tick(g, Date.now());
-    // 自动推关
-    if (S.autoPush && !S.animating) {
+    // 自动战斗（第30关起解锁：勾选=推进下一档，未勾选=挂机当前关卡）
+    const autoUnlocked = g.mainline.stage >= 30;
+    if (autoUnlocked && !S.animating) {
       const now = Date.now();
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
-        const r = C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+        const r = S.autoPush
+          ? C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls))
+          : C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
         S.battleRounds = (r.res && r.res.rounds) || 0;
-        if (r.ok) {
-          addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
-          C.recomputeStats(g);
-        }
+        S.battleStage = r.stage;
+        if (r.ok) addLog('main', S.autoPush ? ('✔ 自动通关第 ' + r.stage + ' 关') : ('✔ 挂机通关当前第 ' + r.stage + ' 关'), 'bl-system');
         playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
     }
