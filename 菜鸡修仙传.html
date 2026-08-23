@@ -254,12 +254,15 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
 .slot-lv { font-size: 10px; color: var(--ink-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .slot-q { font-weight: 800; margin-right: 3px; }
-.slot-hp { width: 86%; height: 6px; background: rgba(0,0,0,.5); border-radius: 999px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
-.slot-hp i { display: block; height: 100%; background: linear-gradient(90deg, #6fd97f, #3fae52); transition: width .15s; }
+.slot-hp { position: relative; width: 92%; height: 14px; background: rgba(0,0,0,.5); border-radius: 4px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
+.slot-hp i { position: absolute; inset: 0; background: linear-gradient(90deg, #ff5f5f, #c02020); transition: width .15s; }
+.slot-hp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; z-index: 2; }
 .slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
 .slot-hp.low i { background: linear-gradient(90deg, #ffb04a, #e0663f); }
-.slot-energy { width: 66%; height: 4px; background: rgba(0,0,0,.45); border-radius: 999px; margin-top: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,.06); }
-.slot-energy i { display: block; height: 100%; background: linear-gradient(90deg, #7fb8ff, #c9a0ff); transition: width .15s; }
+.slot-energy { position: relative; width: 92%; height: 16px; background: rgba(0,0,0,.5); border-radius: 4px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
+.slot-energy i { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; background: linear-gradient(180deg, #c9a0ff, #8b5fd6); box-shadow: 0 0 8px rgba(180,140,255,.6); animation: energyFill 12s linear forwards; }
+@keyframes energyFill { from { height: 0; } to { height: 100%; } }
+.slot-energy-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; text-shadow: 0 1px 2px #000; z-index: 2; white-space: nowrap; overflow: hidden; }
 .slot.dead { opacity: .38; filter: grayscale(.6); }
 .bf-result { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; z-index: 9; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.8); animation: bfpop .5s ease-out; }
 .bf-result.win { color: var(--gold2); }
@@ -2163,16 +2166,19 @@ code.num { font-family: Consolas, monospace; }
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct, q, qName) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
-      '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
-      '<div class="slot-lv">' + (q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '') + lv + '</div>' +
-      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div>' +
-      '<div class="slot-energy"><i style="width:' + (startPct || 0) + '%"></i></div></div>';
+    const slotHtml = (side, idx, nm, color, realm, hp, maxh, hero, boss, startPct, q, qName, regen) => {
+      const hpPct = Math.max(0, Math.min(100, hp / maxh * 100));
+      const dur = Math.max(1.5, Math.min(30, 1000 / (regen || 80)));
+      const qBadge = q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '';
+      return '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '" data-regen="' + (regen || 0) + '">' +
+        '<div class="slot-name" style="color:' + color + '">' + qBadge + nm + '</div>' +
+        '<div class="slot-hp"><i style="width:' + hpPct + '%"></i><span class="slot-hp-num">' + Math.round(hp) + '</span></div>' +
+        '<div class="slot-energy"><i style="animation-duration:' + dur + 's"></i><span class="slot-energy-txt">' + realm + '</span></div></div>';
+    };
     let ph = '';
     pu.forEach((u, i) => {
-      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30); }
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false, 20); }
+      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30, 0, '', 110); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), false, false, 20, tpl.q, C.colorName(tpl.q), 95); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
@@ -2181,7 +2187,7 @@ code.num { font-family: Consolas, monospace; }
     const bp = disp.findIndex(x => x.en.boss);
     if (bp >= 0 && disp.length > 1) { const b = disp.splice(bp, 1)[0]; disp.splice(Math.ceil(disp.length / 2), 0, b); }
     let eh = '';
-    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
+    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName, 80); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -2649,6 +2655,8 @@ code.num { font-family: Consolas, monospace; }
       el.dataset.hp = cur;
       const bar = el.querySelector('.slot-hp i');
       if (bar) bar.style.width = (cur / mh * 100) + '%';
+      const numEl = el.querySelector('.slot-hp-num');
+      if (numEl) numEl.textContent = Math.round(cur);
       const hpEl = el.querySelector('.slot-hp');
       if (hpEl) hpEl.classList.toggle('low', (cur / mh) < 0.30);
       el.classList.toggle('dead', cur <= 0);
@@ -2663,7 +2671,7 @@ code.num { font-family: Consolas, monospace; }
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
       if (aEl && ev.energy !== undefined) {
         const bar = aEl.querySelector('.slot-energy i');
-        if (bar) bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%';
+        if (bar) { bar.style.animation = 'none'; bar.style.height = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
       }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
