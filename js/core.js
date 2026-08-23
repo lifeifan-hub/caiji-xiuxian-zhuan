@@ -1260,6 +1260,40 @@
     return { ok:false, msg:'暂不可用' };
   }
 
+  // ---------- 兑换激活码（一次性/限期） ----------
+  const CODE_SECRET = 'CJXS-2026-REDEEM-#58#xQ';
+  function codeHash(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+    return ('00000000' + h.toString(16)).slice(-8);
+  }
+  function b64urlDecode(code) {
+    let b64 = String(code).replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+  function redeemCode(state, code) {
+    code = String(code || '').trim();
+    if (!code) return { ok:false, msg:'请输入激活码' };
+    let p;
+    try { p = JSON.parse(b64urlDecode(code)); } catch (e) { return { ok:false, msg:'激活码格式不正确' }; }
+    const g = p.g, q = Math.max(1, Math.floor(p.q || 1)), e = p.e || 0;
+    if (!g) return { ok:false, msg:'激活码无效' };
+    const expect = codeHash(CODE_SECRET + g + '|' + q + '|' + e);
+    if (expect !== p.s) return { ok:false, msg:'激活码校验失败' };
+    if (e && Date.now() > e) return { ok:false, msg:'激活码已过期' };
+    state.codeUsed = state.codeUsed || {};
+    if (state.codeUsed[code]) return { ok:false, msg:'该激活码已被使用过' };
+    const RES = ['copper','xiuwei','ziqi','qiongjiang','lingqi','wuxing','fabao'];
+    if (RES.indexOf(g) >= 0) state.res[g] = (state.res[g] || 0) + q;
+    else state.items[g] = (state.items[g] || 0) + q;
+    state.codeUsed[code] = true;
+    recomputeStats(state);
+    return { ok:true, msg:'兑换成功：' + g + ' ×' + q };
+  }
+
   // ---------- 汇总战力 ----------
   function teamPower(state) {
     let pow = 0;
@@ -1285,6 +1319,7 @@
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
     farmMainline,
+    redeemCode,
     teamPower, formatDuration,
     layerCost, breakthroughLayer, layerName,
     zuiyueJarsUnlocked,
