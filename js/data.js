@@ -1,6 +1,6 @@
 /* ============================================================
  * 菜鸡修仙传 · 数据层 (DATA)
- * 所有静态配置：种族 / 境界 / 伙伴 / 装备 / 法宝 / 敌人 / 道具 / 商店
+ * 所有静态配置：种族 / 境界 / 道友 / 装备 / 法宝 / 敌人 / 道具 / 商店
  * 通过 globalThis.CJ.P 暴露，浏览器与 Node 均可加载。
  * ============================================================ */
 (function () {
@@ -58,7 +58,7 @@
   // ---------- 五行本源石用途 ----------
   const ELEM_NAME = { 金: '庚金', 木: '甲木', 水: '癸水', 火: '丙火', 土: '戊土' };
 
-  // ---------- 伙伴库 ----------
+  // ---------- 道友库 ----------
   // quality: 2=蓝 3=紫 4=金 5=红
   // role: atk/tank/heal/ctrl
   const PARTNERS = [
@@ -236,7 +236,7 @@
 
   // ---------- 道具 ----------
   const ITEMS = {
-    '招募令': { name: '招募令', desc: '招募伙伴。可单抽/十连。' },
+    '招募令': { name: '招募令', desc: '招募道友。可单抽/十连。' },
     '渡劫丹': { name: '渡劫丹', desc: '渡劫时每颗提升8%成功率。' },
     '聚元丹': { name: '聚元丹', desc: '立刻获得当前境界一小时修为。' },
     '聚灵丹': { name: '聚灵丹', desc: '立刻获得500灵气。' },
@@ -269,12 +269,9 @@
       name: '鸿蒙紫气阁', currency: 'ziqi',
       goods: [
         { id: 'd', item: '渡劫丹', price: 15, qty: 1, limit: 0 },
-        { id: 'zhao', item: '招募令', price: 6, qty: 1, limit: 0 },
-        { id: 'jun', item: '金卡伙伴包', price: 30, qty: 1, limit: 3 },
-        { id: 'hongdong', item: '红卡伙伴包', price: 100, qty: 1, limit: 1 },
-        { id: 'xian', item: '仙品装备箱', price: 50, qty: 1, limit: 5 },
-        { id: 'lian', item: '精炼石·百', price: 20, qty: 100, limit: 0 },
-        { id: 'qiang', item: '强化石·百', price: 15, qty: 100, limit: 0 }
+        { id: 'zhao', item: '招募令', price: 200, qty: 1, limit: 0 },
+        { id: 'jun', item: '金卡道友包', price: 1000, qty: 1, limit: 0 },
+        { id: 'hongdong', item: '红卡道友包', price: 3000, qty: 1, limit: 0 }
       ]
     },
     gongfa: {
@@ -300,7 +297,7 @@
     lingmai: { name: '灵脉', res: '琼浆', desc: '主角核心：提升主角品质颜色', baseHr: 0 },
     linggen: { name: '灵根', res: '灵气', desc: '全体攻防血百分比加成', baseHr: 4 },
     fazhen: { name: '法阵', res: '修为', desc: '挂机修为产出提升', baseHr: 5 },
-    juling: { name: '聚灵阵', res: '修为', desc: '闲置伙伴按比例加成全队', baseHr: 0 },
+    juling: { name: '聚灵阵', res: '修为', desc: '闲置道友按比例加成全队', baseHr: 0 },
     gongfa: { name: '功法', res: '修为', desc: '研习主角主动被动功法', baseHr: 0 },
     qiankun: { name: '造化乾坤殿', res: '灵气', desc: '丹房炼丹 + 器宝炼器', baseHr: 0 }
   };
