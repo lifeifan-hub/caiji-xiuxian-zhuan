@@ -750,7 +750,7 @@ code.num { font-family: Consolas, monospace; }
     const iid = newId();
     const ex = state.itemDup || {};
     state.partners.push({
-      iid, pid: tpl.id, level: level || 1, stars: 0, equipped: {}
+      iid, pid: tpl.id, level: level || 1, stars: 0, equipped: {}, realm: { idx: 0, layer: 1 }
     });
     state.equipmentRef = state.equipmentRef || {};
     return iid;
@@ -791,6 +791,9 @@ code.num { font-family: Consolas, monospace; }
     state.res = state.res || {};
     if (state.res.fabao == null) state.res.fabao = 0;
     if (state.res.qiongjiang == null) state.res.qiongjiang = 0;
+    (state.partners || []).forEach(p => {
+      if (!p.realm) p.realm = { idx: Math.min(8, Math.floor((p.level - 1) / 15)), layer: Math.max(1, 1 + Math.floor(((p.level - 1) % 15) * 19 / 15)) };
+    });
     return state;
   }
 
@@ -860,21 +863,19 @@ code.num { font-family: Consolas, monospace; }
       if (!p) return null;
       const tpl = partnerTpl(p.pid);
       const qm = qualityMult(tpl.q);
-      const lvF = 0.7 + p.level * 0.09;
+      const grow = partnerGrow(p); // 道友独立境界成长
       let atk, def, hp, spd;
-      atk = tpl.atk * qm * lvF;
-      def = tpl.def * qm * lvF;
-      hp = tpl.hp * qm * lvF;
-      spd = tpl.spd + p.level * 0.9;
+      atk = tpl.atk * qm * grow;
+      def = tpl.def * qm * grow;
+      hp = tpl.hp * qm * grow;
+      spd = tpl.spd + (grow - 1) * 2.5;
       // 进阶 星星
       const starF = 1 + p.stars * 0.12;
       atk *= starF; def *= starF; hp *= starF;
-      // 道友也按境界成长一部分，保持大境界推进不掉队
-      const realmPt = Math.pow(realmMult, 0.80); // 道友也随渡劫层次成长，保持不掉队
       extra = {
-        hp: hp * realmPt,
-        atk: atk * realmPt,
-        def: def * realmPt,
+        hp: hp,
+        atk: atk,
+        def: def,
         spd: spd,
         quality: tpl.q,
         role: tpl.role,
@@ -961,13 +962,13 @@ code.num { font-family: Consolas, monospace; }
   }
 
   function julingBonus(state) {
-    // 聚灵阵: 把闲置道友(quality, level)换算为全队百分比
+    // 聚灵阵: 把闲置道友(quality, 境界, 星星)换算为全队百分比
     let val = 0;
     state.juling.forEach(iid => {
       const p = state.partners.find(x => x.iid === iid);
       if (!p) return;
       const tpl = partnerTpl(p.pid);
-      val += tpl.q * 2 + p.level * 0.05 + p.stars * 2;
+      val += tpl.q * 2 + p.realm.idx * 2 + p.realm.layer * 0.1 + p.stars * 2;
     });
     return Math.min(50, val * 0.5);
   }
@@ -1170,20 +1171,30 @@ code.num { font-family: Consolas, monospace; }
     return results;
   }
 
-  function upgradePartner(state, iid) {
+  function partnerLayerCost(p) {
+    const mult = REALMS[p.realm.idx].mult;
+    return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(p.realm.layer, 2.2));
+  }
+  function partnerTribulate(state, iid) {
     const p = state.partners.find(x => x.iid === iid);
     if (!p) return { ok: false, msg: '道友不存在' };
-    const tpl = partnerTpl(p.pid);
-    const maxLv = pMaxLevel(tpl.q);
-    if (p.level >= maxLv) return { ok: false, msg: '已满级' };
-    const cost = levelCost(p.level);
-    if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足' };
-    state.res.xiuwei -= cost;
-    p.level++;
-    recomputeStats(state);
-    return { ok: true, msg: p.level + ' 级' };
+    const idx = p.realm.idx, layer = p.realm.layer;
+    const cost = partnerLayerCost(p);
+    if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
+    const chance = clamp(0.95 - idx * 0.08, 0.05, 0.95);
+    const success = Math.random() < chance;
+    if (success) {
+      state.res.xiuwei -= cost;
+      p.realm.layer++;
+      if (p.realm.layer > 20) { p.realm.layer = 1; p.realm.idx = Math.min(8, idx + 1); }
+      recomputeStats(state);
+      return { ok: true, msg: '道友渡劫成功：' + partnerRealmLabel(p) };
+    }
+    const pct = 10 + idx * 8;
+    const lost = cost * pct / 100;
+    state.res.xiuwei -= lost;
+    return { ok: false, msg: '道友渡劫失败，损失本阶段所需修为的' + pct + '%（-' + fmt(lost) + '）' };
   }
-  function levelCost(level) { return Math.round(20 + Math.pow(level, 1.9) * 2); }
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
@@ -1193,7 +1204,7 @@ code.num { font-family: Consolas, monospace; }
     recomputeStats(state);
   }
   function setJuling(state, ids) {
-    state.juling = ids.slice(0, 12);
+    state.juling = ids.slice(0, 3);
     state.juling.forEach(id => { if (state.formation.includes(id)) state.formation = state.formation.filter(x => x !== id); });
     recomputeStats(state);
   }
@@ -1330,13 +1341,13 @@ code.num { font-family: Consolas, monospace; }
     const r = REALMS[state.realm.idx];
     return r.name + '·' + layerName(state.realm.layer) + '层';
   }
-  // 道友独立境界：按等级划分，品质越高可修到的境界越高（最高到渡劫）
+  // 道友独立境界
   function partnerRealmLabel(p) {
-    const LPR = 15; // 每 15 级一个大境界
-    const idx = Math.min(8, Math.floor((p.level - 1) / LPR));
-    const inRealm = (p.level - 1) % LPR;
-    const layer = Math.max(1, Math.min(20, 1 + Math.floor(inRealm * 19 / LPR)));
-    return REALMS[idx].name + '·' + layerName(layer) + '层';
+    return REALMS[p.realm.idx].name + '·' + layerName(p.realm.layer) + '层';
+  }
+  // 道友渡劫成长倍率（按自身境界变化）
+  function partnerGrow(p) {
+    return REALMS[p.realm.idx].mult * (1 + (p.realm.layer - 1) * 0.06);
   }
   function tribulationCost(state) {
     const idx = state.realm.idx;
@@ -1962,7 +1973,8 @@ code.num { font-family: Consolas, monospace; }
     tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
-    summon, summonOne, upgradePartner, levelCost,
+    summon, summonOne,
+    partnerTribulate, partnerLayerCost,
     upgradeManor, manorCost, hasCost, payCost,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
     enhanceEquip, refineEquip, fumoEquip, equipTo, unequip,
@@ -2431,10 +2443,10 @@ code.num { font-family: Consolas, monospace; }
       const st = C.unitStats(g, p.iid);
       html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
         '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
+        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
         '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级(修为' + F(C.levelCost(p.level)) + ')</button></div></div>';
+        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫(修为' + F(C.partnerLayerCost(p)) + ')</button></div></div>';
     });
     return html;
   }
@@ -2485,10 +2497,10 @@ code.num { font-family: Consolas, monospace; }
       const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid);
       html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
         '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · Lv.' + p.level + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
+        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
         '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级</button></div></div>';
+        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫</button></div></div>';
     });
     html += '</div>';
     return html;
@@ -2679,10 +2691,6 @@ code.num { font-family: Consolas, monospace; }
       const aSide = ev.team === 'ally' ? 0 : 1;
       const aEl = slotEl(aSide, ev.idx);
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
-      if (aEl && ev.energy !== undefined) {
-        const bar = aEl.querySelector('.slot-energy i');
-        if (bar) { bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
-      }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
         const tEl = slotEl(tSide, t.idx);
@@ -2789,7 +2797,7 @@ code.num { font-family: Consolas, monospace; }
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'plv': function (a) { const r = C.upgradePartner(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
@@ -2799,7 +2807,11 @@ code.num { font-family: Consolas, monospace; }
     'jld': function (a) {
       const g = S.game;
       if (g.juling.includes(a)) { g.juling = g.juling.filter(x => x !== a); }
-      else { if (g.juling.length >= 12) { toast('聚灵阵已满'); return; } g.juling.push(a); g.formation = g.formation.filter(x => x !== a); }
+      else {
+        if (g.formation.includes(a)) { toast('上阵中的道友请先下阵，才能放入聚灵阵'); return; }
+        if (g.juling.length >= 3) { toast('聚灵阵最多容3位闲置道友'); return; }
+        g.juling.push(a);
+      }
       C.recomputeStats(g); C.save(g); render();
     },
     'equnit': function (a) { S.equipUnit = a; render(); },
@@ -2859,7 +2871,7 @@ code.num { font-family: Consolas, monospace; }
   let tickCounter = 0;
   // 能量条：持续注满循环，满后释放专属技能
   setInterval(() => {
-    if (!S.game || S.animating) return;
+    if (!S.game) return;
     const bf = document.querySelector('.battle-field');
     if (!bf) return;
     bf.querySelectorAll('.slot:not(.empty)').forEach(slot => {
