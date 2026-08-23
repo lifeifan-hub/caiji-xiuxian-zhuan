@@ -588,17 +588,15 @@ code.num { font-family: Consolas, monospace; }
     market: {
       name: '普通集市', currency: 'copper',
       goods: [
-        { id: 'd', item: '渡劫丹', price: 500, qty: 1, limit: 0 },
-        { id: 'juyuan', item: '聚元丹', price: 200, qty: 1, limit: 0 },
-        { id: 'juling', item: '聚灵丹', price: 120, qty: 1, limit: 0 },
-        { id: 'qianghua', item: '强化石', price: 100, qty: 5, limit: 0 },
-        { id: 'jinglian', item: '精炼石', price: 150, qty: 5, limit: 0 },
-        { id: 'fuomo', item: '附魔石', price: 200, qty: 3, limit: 0 }
+        { id: 'qianghua', item: '强化石', price: 50000, qty: 1, limit: 0 },
+        { id: 'jinglian', item: '精炼石', price: 50000, qty: 1, limit: 0 },
+        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 }
       ]
     },
     purple: {
       name: '鸿蒙紫气阁', currency: 'ziqi',
       goods: [
+        { id: 'd', item: '渡劫丹', price: 15, qty: 1, limit: 0 },
         { id: 'zhao', item: '招募令', price: 6, qty: 1, limit: 0 },
         { id: 'jun', item: '金卡伙伴包', price: 30, qty: 1, limit: 3 },
         { id: 'hongdong', item: '红卡伙伴包', price: 100, qty: 1, limit: 1 },
@@ -607,13 +605,19 @@ code.num { font-family: Consolas, monospace; }
         { id: 'qiang', item: '强化石·百', price: 15, qty: 100, limit: 0 }
       ]
     },
-    five: {
-      name: '五行天坊', currency: 'wuxing',
+    gongfa: {
+      name: '功法商店', currency: 'qiongjiang',
       goods: [
-        { id: 'wxs', item: '五行石', price: 10, qty: 1, limit: 0 },
-        { id: 'zhaoling', item: '招募令', price: 20, qty: 1, limit: 0 },
-        { id: 'linggen', item: '灵根升级券', price: 15, qty: 1, limit: 0 },
-        { id: 'mop', item: '五行装备箱', price: 40, qty: 1, limit: 3 }
+        { id: 'juyuan', item: '聚元丹', price: 6, qty: 1, limit: 0 },
+        { id: 'juling', item: '聚灵丹', price: 4, qty: 1, limit: 0 }
+      ]
+    },
+    fabao: {
+      name: '法宝商店', currency: 'fabao',
+      goods: [
+        { id: 'fabao', item: '随机法宝', price: 40, qty: 1, limit: 0 },
+        { id: 'qiang2', item: '强化石·百', price: 12, qty: 100, limit: 0 },
+        { id: 'lian2', item: '精炼石·百', price: 14, qty: 100, limit: 0 }
       ]
     }
   };
@@ -680,7 +684,7 @@ code.num { font-family: Consolas, monospace; }
 
   // ---------- 状态 ----------
   function freshStats() {
-    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0 };
+    return { xiuwei: 0, copper: 200, qiongjiang: 0, lingqi: 0, ziqi: 10, wuxing: 0, fabao: 0 };
   }
 
   function newGame(race) {
@@ -784,6 +788,9 @@ code.num { font-family: Consolas, monospace; }
     if (!state) return state;
     state.mainline = state.mainline || { stage: 1 };
     if (state.mainline.cleared == null) state.mainline.cleared = Math.max(0, (state.mainline.stage || 1) - 1);
+    state.res = state.res || {};
+    if (state.res.fabao == null) state.res.fabao = 0;
+    if (state.res.qiongjiang == null) state.res.qiongjiang = 0;
     return state;
   }
 
@@ -1385,6 +1392,7 @@ code.num { font-family: Consolas, monospace; }
     if (item === '金卡伙伴包') { summonOne(state, null, 4); return; }
     if (item === '红卡伙伴包') { summonOne(state, null, 5); return; }
     if (item === '仙品装备箱' || item === '五行装备箱') { const e = genEquip(state, item === '仙品装备箱' ? 3 : 3); state.equipment.push(e); return; }
+    if (item === '随机法宝') { const fid = pick(Object.keys(P.FABAO)); const ex = state.fabao.find(x => x.id === fid); if (ex) ex.count++; else state.fabao.push({ id: fid, count: 1 }); return; }
     addItem(state, item, good.qty || 1);
   }
 
@@ -1831,7 +1839,8 @@ code.num { font-family: Consolas, monospace; }
       let drop = 1 + (state.dungeons.shuiyue.bestBoss / 5 | 0);
       state.dungeons.shuiyue.bestBoss = bossLv;
       state.res.ziqi += 10 + bossLv * 2;
-      if (cb) cb({ msg: '击败洞天魔尊！获得『' + f.name + '碎片×2』与鸿蒙紫气！', cls: 'loot' });
+      state.res.fabao += 3 + bossLv * 2;
+      if (cb) cb({ msg: '击败洞天魔尊！获得『' + f.name + '碎片×2』、法宝碎片+' + (3 + bossLv * 2) + ' 与鸿蒙紫气！', cls: 'loot' });
       return { ok:true, res };
     }
     return { ok:false, res };
@@ -2445,7 +2454,7 @@ code.num { font-family: Consolas, monospace; }
     Object.keys(shops).forEach(k => { html += '<button class="btn ' + (S.shop === k ? 'btn-gold' : '') + '" data-act="shop" data-a="' + k + '">' + shops[k].name + '</button>'; });
     html += '</div>';
     const shop = shops[S.shop];
-    const curName = { copper: '铜钱', ziqi: '鸿蒙紫气', wuxing: '五行币' }[shop.currency];
+    const curName = { copper: '铜钱', ziqi: '鸿蒙紫气', wuxing: '五行币', qiongjiang: '琼浆玉液', fabao: '法宝碎片' }[shop.currency];
     html += '<div class="card"><div class="row"><div><b class="gold">' + shop.name + '</b></div><span class="muted">持有 <b class="gold">' + F(g.res[shop.currency]) + '</b> ' + curName + '</span></div></div>';
     shop.goods.forEach(gd => {
       const limitStr = gd.limit ? '（限购' + gd.limit + '）' : '';
