@@ -221,11 +221,14 @@
 
   function render() {
     renderHeader();
+    if (!S.animating) {
+      const bw = $('#battle-win');
+      if (bw) bw.innerHTML = battleWindowHtml();
+    }
     const v = $('#cview');
     v.innerHTML = '';
     const fn = { main: renderMain, manor: renderManor, partner: renderPartner, equip: renderEquip, dungeon: renderDungeon, shop: renderShop, settings: renderSettings }[S.tab];
     if (fn) fn(v);
-    v.insertAdjacentHTML('afterbegin', battleWindowHtml());
   }
 
   // ---------- 主页 / 修仙 ----------
@@ -730,7 +733,7 @@
           addLog('main', '✔ 自动通关第 ' + r.stage + ' 关', 'bl-system');
           C.recomputeStats(g);
         }
-        playBattle((r.res && r.res.events) || [], () => { C.save(g); renderHeader(); if (S.tab === 'main') renderMain($('#cview')); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
+        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
     }
     C.save(g);
