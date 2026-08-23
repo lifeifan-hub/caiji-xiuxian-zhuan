@@ -552,6 +552,9 @@
       '<p><b>【伙伴】</b>招募令/紫气抽卡，蓝紫金红；多余伙伴进聚灵阵加成全队。</p>' +
       '<p><b>【灵石】</b>水月洞天刷法宝碎片、五行山拿五行石、每日副本扫荡。</p>' +
       '</div></div>' +
+      '<div class="card"><div class="sec-title" style="margin:0">兑换激活码</div>' +
+      '<div class="row mt8"><input id="redeem-input" class="name-input" placeholder="输入一次性激活码"><button class="btn btn-gold" data-act="redeem">确定</button></div>' +
+      '<div class="dim mt8">向作者领取激活码，输入后点“确定”即可获得对应物品（一次性，过期/用过即失效）。</div></div>' +
       '<div class="card"><div class="row"><div><b class="gold">动画预览</b></div><button class="btn btn-sm" data-act="cine">预览渡劫破境动画</button></div></div>' +
       '<div class="card"><div class="row"><div><b class="gold">存档导出</b></div><button class="btn btn-sm" data-act="export">复制存档</button></div><div class="dim mt8">把这段字符串发给朋友可在其设备继续玩。</div></div>' +
       '<div class="card"><div class="row"><div><b class="gold">存档导入</b></div><button class="btn btn-sm" data-act="import">粘贴导入</button></div></div>' +
@@ -764,6 +767,15 @@
     },
     'daily': function (a) { const r = C.dailySweep(S.game, a); toast(r.msg); if (r.ok) { addLog('dungeon', r.msg, 'bl-loot'); C.save(S.game); render(); } },
     'shop': function (a) { S.shop = a; render(); },
+    'redeem': function () {
+      const inp = $('#redeem-input');
+      const code = inp ? inp.value.trim() : '';
+      if (!code) { toast('请输入激活码'); return; }
+      const r = C.redeemCode(S.game, code);
+      toast(r.msg);
+      if (r.ok) { addLog('main', '🔑 兑换' + r.msg.replace('兑换成功：', ''), 'bl-loot'); C.save(S.game); }
+      render();
+    },
     'export': function () { const s = C.exportSave(S.game); if (navigator.clipboard) navigator.clipboard.writeText(s); toast('存档已复制'); },
     'import': function () { const txt = prompt('粘贴存档字符串'); if (txt) { const im = C.importSave(txt); if (im) { C.wipe(); localStorage.setItem('caiji_xiuxian_save_v1', JSON.stringify(im)); location.reload(); } else toast('存档无效'); } },
     'reset': function () { if (confirm('确定要重置全部进度，并重新选择种族吗？')) { C.wipe(); goToStart(); toast('已重置，请重新选择种族开始'); } }
