@@ -194,16 +194,19 @@
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct, q, qName) =>
-      '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
-      '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
-      '<div class="slot-lv">' + (q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '') + lv + '</div>' +
-      '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div>' +
-      '<div class="slot-energy"><i style="width:' + (startPct || 0) + '%"></i></div></div>';
+    const slotHtml = (side, idx, nm, color, realm, hp, maxh, hero, boss, startPct, q, qName, regen) => {
+      const hpPct = Math.max(0, Math.min(100, hp / maxh * 100));
+      const dur = Math.max(1.5, Math.min(30, 1000 / (regen || 80)));
+      const qBadge = q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '';
+      return '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '" data-regen="' + (regen || 0) + '">' +
+        '<div class="slot-name" style="color:' + color + '">' + qBadge + nm + '</div>' +
+        '<div class="slot-hp"><i style="width:' + hpPct + '%"></i><span class="slot-hp-num">' + Math.round(hp) + '</span></div>' +
+        '<div class="slot-energy"><i style="animation-duration:' + dur + 's"></i><span class="slot-energy-txt">' + realm + '</span></div></div>';
+    };
     let ph = '';
     pu.forEach((u, i) => {
-      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30); }
-      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false, 20); }
+      if (u.isHero) { const hps = heroSt ? heroSt.hp : 100; ph += slotHtml(0, i, heroNm, ELEMC[heroEl] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), true, false, 30, 0, '', 110); }
+      else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', C.realmLabel(g), hps, Math.max(1, hps), false, false, 20, tpl.q, C.colorName(tpl.q), 95); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
@@ -212,7 +215,7 @@
     const bp = disp.findIndex(x => x.en.boss);
     if (bp >= 0 && disp.length > 1) { const b = disp.splice(bp, 1)[0]; disp.splice(Math.ceil(disp.length / 2), 0, b); }
     let eh = '';
-    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
+    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName, 80); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -680,6 +683,8 @@
       el.dataset.hp = cur;
       const bar = el.querySelector('.slot-hp i');
       if (bar) bar.style.width = (cur / mh * 100) + '%';
+      const numEl = el.querySelector('.slot-hp-num');
+      if (numEl) numEl.textContent = Math.round(cur);
       const hpEl = el.querySelector('.slot-hp');
       if (hpEl) hpEl.classList.toggle('low', (cur / mh) < 0.30);
       el.classList.toggle('dead', cur <= 0);
@@ -694,7 +699,7 @@
       if (aEl) aEl.classList.add(aSide === 0 ? 'lunge-right' : 'lunge-left');
       if (aEl && ev.energy !== undefined) {
         const bar = aEl.querySelector('.slot-energy i');
-        if (bar) bar.style.width = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%';
+        if (bar) { bar.style.animation = 'none'; bar.style.height = Math.max(0, Math.min(100, ev.energy / 1000 * 100)) + '%'; }
       }
       (ev.targets || []).forEach(t => {
         const tSide = t.team === 'ally' ? 0 : 1;
