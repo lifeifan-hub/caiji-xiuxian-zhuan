@@ -129,10 +129,8 @@
 
   // ---------- 导航 ----------
   const NAV = [
-    { id: 'main', ico: '☯', name: '修仙' },
+    { id: 'main', ico: '友', name: '道友' },
     { id: 'manor', ico: '府', name: '仙府' },
-    { id: 'partner', ico: '友', name: '道友' },
-    { id: 'equip', ico: '剑', name: '装备' },
     { id: 'dungeon', ico: '战', name: '副本' },
     { id: 'shop', ico: '市', name: '仙宝阁' },
     { id: 'dimension', ico: '次', name: '次元空间' },
@@ -235,7 +233,7 @@
     }
     const v = $('#cview');
     v.innerHTML = '';
-    const fn = { main: renderMain, manor: renderManor, partner: renderPartner, equip: renderEquip, dungeon: renderDungeon, shop: renderShop, dimension: renderDimension, settings: renderSettings }[S.tab];
+    const fn = { main: renderMain, manor: renderManor, dungeon: renderDungeon, shop: renderShop, dimension: renderDimension, settings: renderSettings }[S.tab] || renderMain;
     if (fn) fn(v);
   }
 
@@ -319,6 +317,9 @@
         <div id="battle-log" class="battle-log"></div>
       </div>
     `;
+    // 合并道友 + 装备页
+    v.insertAdjacentHTML('beforeend', renderPartner());
+    v.insertAdjacentHTML('beforeend', renderEquip());
     renderLog('#battle-log', S.logMain);
   }
 
@@ -405,7 +406,7 @@
   }
 
   // ---------- 道友 ----------
-  function renderPartner(v) {
+  function renderPartner() {
     const g = S.game;
     let html = '<div class="sec-title">道友·阵容搭配（速度/控制/治疗/五行克制是胜负核心）</div>';
     html += '<div class="card"><div class="row"><div><b class="gold">招募</b> <span class="dim">招募令×' + (g.items['招募令'] || 0) + ' ／ 紫气' + F(g.res.ziqi) + '</span></div></div>' +
@@ -450,7 +451,7 @@
         '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
         '<button class="btn btn-sm mt8" data-act="plv" data-a="' + p.iid + '">升级(修为' + F(C.levelCost(p.level)) + ')</button></div></div>';
     });
-    v.innerHTML = html;
+    return html;
   }
 
   function qColor(q) { return { 1: 'var(--green)', 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
@@ -525,7 +526,7 @@
   }
 
   // ---------- 装备 / 法宝 ----------
-  function renderEquip(v) {
+  function renderEquip() {
     const g = S.game;
     const unitKey = S.equipUnit;
     const unitName = unitKey === 'hero' ? '主角' : (g.partners.find(p => p.iid === unitKey) ? DATA.PARTNERS.find(x => x.id === g.partners.find(p => p.iid === unitKey).pid).name : '?');
@@ -566,7 +567,7 @@
       const eq = g.equippedFabao.includes(fid);
       html += '<div class="shop-item"><span><b class="gold">' + f.name + '</b> <span class="dim">' + f.desc + '</span></span><span><span class="dim">碎片' + have + '/' + f.frag + ' · 持有' + owned + '</span><button class="btn btn-sm' + (have >= f.frag ? ' btn-gold' : '') + '" data-act="craft" data-a="' + fid + '">合成</button> <button class="btn btn-sm" data-act="fab" data-a="' + fid + '" disabled>装备</button></span></div>';
     });
-    v.innerHTML = html;
+    return html;
   }
 
   // ---------- 副本 ----------
