@@ -662,19 +662,19 @@
   function tribulationInfo(state) {
     if (state.realm.layer < MAX_LAYER) return { maxed: false };
     const idx = state.realm.idx;
-    const baseChance = clamp(0.72 - idx * 0.05, 0.18, 0.72); // 境界越高成功率越低
+    const baseChance = clamp(0.95 - idx * 0.10, 0.05, 0.95); // 炼气95%，每大境界−10%
     const pills = state.items['渡劫丹'] || 0;
     const chance = clamp(baseChance + Math.min(pills, 6) * 0.08, 0, 0.99);
-    return { maxed: true, chance, pills, baseChance, cost: tribulationCost(state) };
+    return { maxed: true, chance, pills, baseChance, cost: tribulationCost(state), failPct: 10 + idx * 10 };
   }
   function tribulate(state, usePill) {
     const info = tribulationInfo(state);
     if (!info.maxed) return { ok:false, msg:'当前境界未圆满，无需渡劫' };
     if (state.res.xiuwei < info.cost) return { ok:false, msg:'修为不足，渡劫需 ' + fmt(info.cost) + ' 修为' };
-    state.res.xiuwei -= info.cost; // 渡劫消耗修为
     if (usePill && info.pills > 0) { takeItem(state, '渡劫丹', 1); }
     const success = Math.random() < info.chance;
     if (success) {
+      state.res.xiuwei -= info.cost; // 渡劫成功：消耗本次所需修为
       if (state.realm.idx >= MAX_REALM) {
         state.realm.idx = MAX_REALM; state.realm.layer = MAX_LAYER;
         return { ok:true, msg:'已证道成仙（大圆满）', ascended:true };
@@ -689,10 +689,10 @@
       return { ok:true, msg:'渡劫成功！突破至' + REALMS[state.realm.idx].name + '！', gift };
     } else {
       state.realm.fails++;
-      const pct = 10 + state.realm.idx * 2; // 失败损失修为%，境界越高越高
-      const lost = state.res.xiuwei * pct / 100;
+      const pct = info.failPct; // 失败损失“本阶段所需修为”的 X%，每大境界+10%
+      const lost = info.cost * pct / 100;
       state.res.xiuwei -= lost;
-      return { ok:false, msg:'渡劫失败…损失' + pct + '%修为（-' + fmt(lost) + '）。境界越高成功率越低、损失越大；备渡劫丹可提升成功率。', lost, pct };
+      return { ok:false, msg:'渡劫失败…损失本阶段所需修为的' + pct + '%（-' + fmt(lost) + '）。境界越高成功率越低、失败损失越大；备渡劫丹可提升成功率。', lost, pct };
     }
   }
 
