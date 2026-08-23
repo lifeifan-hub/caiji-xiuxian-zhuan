@@ -631,20 +631,34 @@
   function slotName(id) { const s = P.SLOTS.find(x => x.id === id); return s ? s.name : id; }
 
   // ---------- 渡劫 ----------
+  function realmChance(state) {
+    const idx = state.realm.idx;
+    return clamp(0.95 - idx * 0.10, 0.05, 0.95); // 炼气95%，每大境界−10%
+  }
+  function realmFailPct(idx) { return 10 + idx * 10; }
   function layerCost(state) {
     const idx = state.realm.idx, layer = state.realm.layer;
     const mult = REALMS[idx].mult;
     return Math.round(120 * Math.pow(mult, 1.2) * Math.pow(layer, 1.5));
   }
-  function breakthroughLayer(state) {
-    if (state.realm.layer >= MAX_LAYER) return { ok: false, msg: '已圆满，请渡劫' };
+  function breakthroughLayer(state, usePill) {
+    if (state.realm.layer >= MAX_LAYER) return { ok: false, msg: '已圆满，请渡劫大境界' };
     const cost = layerCost(state);
     if (state.res.xiuwei < cost) return { ok: false, msg: '修为不足（需 ' + fmt(cost) + '）' };
-    state.res.xiuwei -= cost;
-    state.realm.layer++;
-    // 突破小层给少量属性奖励（等效主角等级小升）
-    recomputeStats(state);
-    return { ok: true, msg: '突破 ' + REALMS[state.realm.idx].name + '·' + layerName(state.realm.layer) + ' 层成功！' };
+    let chance = realmChance(state);
+    if (usePill && (state.items['渡劫丹'] || 0) > 0) { takeItem(state, '渡劫丹', 1); chance += 0.08; }
+    chance = clamp(chance, 0, 0.99);
+    const success = Math.random() < chance;
+    if (success) {
+      state.res.xiuwei -= cost;
+      state.realm.layer++;
+      recomputeStats(state);
+      return { ok: true, msg: '渡劫成功！升至 ' + REALMS[state.realm.idx].name + '·' + layerName(state.realm.layer) + ' 层！' };
+    }
+    const pct = realmFailPct(state.realm.idx);
+    const lost = cost * pct / 100;
+    state.res.xiuwei -= lost;
+    return { ok: false, msg: '渡劫失败…损失本阶段所需修为的' + pct + '%（-' + fmt(lost) + '）', lost, pct };
   }
   function layerName(layer) {
     const layers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十'];
@@ -662,17 +676,19 @@
   function tribulationInfo(state) {
     if (state.realm.layer < MAX_LAYER) return { maxed: false };
     const idx = state.realm.idx;
-    const baseChance = clamp(0.95 - idx * 0.10, 0.05, 0.95); // 炼气95%，每大境界−10%
+    const baseChance = realmChance(state);
     const pills = state.items['渡劫丹'] || 0;
-    const chance = clamp(baseChance + Math.min(pills, 6) * 0.08, 0, 0.99);
-    return { maxed: true, chance, pills, baseChance, cost: tribulationCost(state), failPct: 10 + idx * 10 };
+    const chance = baseChance; // 展示基础成功率；渡劫时有渡劫丹则另+8%
+    return { maxed: true, chance, pills, baseChance, cost: tribulationCost(state), failPct: realmFailPct(idx) };
   }
   function tribulate(state, usePill) {
     const info = tribulationInfo(state);
     if (!info.maxed) return { ok:false, msg:'当前境界未圆满，无需渡劫' };
     if (state.res.xiuwei < info.cost) return { ok:false, msg:'修为不足，渡劫需 ' + fmt(info.cost) + ' 修为' };
-    if (usePill && info.pills > 0) { takeItem(state, '渡劫丹', 1); }
-    const success = Math.random() < info.chance;
+    let chance = info.baseChance;
+    if (usePill && info.pills > 0) { takeItem(state, '渡劫丹', 1); chance += 0.08; } // 每次渡劫最多添加1颗
+    chance = clamp(chance, 0, 0.99);
+    const success = Math.random() < chance;
     if (success) {
       state.res.xiuwei -= info.cost; // 渡劫成功：消耗本次所需修为
       if (state.realm.idx >= MAX_REALM) {
@@ -1214,7 +1230,7 @@
   CJ.Core = {
     newGame, hasSave, load, save, wipe, exportSave, importSave,
     tick, offlineGains, rates, applyGain, recomputeStats, unitStats,
-    realmLabel, tribulationInfo, tribulate,
+    realmLabel, tribulationInfo, tribulate, realmChance, realmFailPct,
     tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
