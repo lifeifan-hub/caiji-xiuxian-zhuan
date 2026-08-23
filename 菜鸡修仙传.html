@@ -248,6 +248,7 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .slot-hero { border-color: var(--gold); background: rgba(240,199,94,.14); box-shadow: 0 0 8px rgba(240,199,94,.25); }
 .slot-boss { border-color: var(--red); background: rgba(255,80,80,.12); }
 .slot-lv { font-size: 10px; color: var(--ink-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.slot-q { font-weight: 800; margin-right: 3px; }
 .slot-hp { width: 86%; height: 6px; background: rgba(0,0,0,.5); border-radius: 999px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
 .slot-hp i { display: block; height: 100%; background: linear-gradient(90deg, #6fd97f, #3fae52); transition: width .15s; }
 .slot[data-side="1"] .slot-hp i { background: linear-gradient(90deg, #ff8a6b, #e0523f); }
@@ -705,7 +706,7 @@ code.num { font-family: Consolas, monospace; }
       manor: { zuiyue: 1, lingmai: 0, linggen: 1, fazhen: 1, juling: 0, gongfa: 0, qiankun: 1 },
       gongfa: 0,      // 已研习功法层数
       skills: ['basic'], // 主角已掌握技能 id
-      mainline: { stage: 1 },
+      mainline: { stage: 1, cleared: 0 },
       dungeons: {
         shuiyue: { bestBoss: 0 },
         wuxing: { bestStage: 0 },
@@ -769,7 +770,7 @@ code.num { font-family: Consolas, monospace; }
     try {
       if (typeof localStorage === 'undefined') return null;
       const raw = localStorage.getItem(SAVE_KEY);
-      return raw ? JSON.parse(raw) : null;
+      return raw ? normalizeState(JSON.parse(raw)) : null;
     } catch (e) { return null; }
   }
   function wipe() {
@@ -777,7 +778,13 @@ code.num { font-family: Consolas, monospace; }
   }
   function exportSave(state) { return btoa(encodeURIComponent(JSON.stringify(state))); }
   function importSave(str) {
-    try { return JSON.parse(decodeURIComponent(atob(str))); } catch (e) { return null; }
+    try { return normalizeState(JSON.parse(decodeURIComponent(atob(str)))); } catch (e) { return null; }
+  }
+  function normalizeState(state) {
+    if (!state) return state;
+    state.mainline = state.mainline || { stage: 1 };
+    if (state.mainline.cleared == null) state.mainline.cleared = Math.max(0, (state.mainline.stage || 1) - 1);
+    return state;
   }
 
   // ---------- 数据查询 ----------
@@ -1436,6 +1443,7 @@ code.num { font-family: Consolas, monospace; }
   function buildEnemyUnit(e) {
     return {
       name: e.name, element: e.el, role: e.role || 'atk', team: 'enemy', boss: !!e.boss,
+      q: e.q || 2, qName: e.qName || '',
       maxHp: e.hp, hp: e.hp, atk: e.atk, def: e.def, spd: e.spd,
       crit: e.crit || 0.05, critDmg: e.critDmg || 0, heal: 0, elementDmg: 0,
       ctrlAcc: 0, silImmune: !!e.silImmune,
@@ -1444,25 +1452,28 @@ code.num { font-family: Consolas, monospace; }
     };
   }
 
-  function makeEnemies(stage) {
+  function makeEnemies(stage, firstClear) {
     const s = stage;
     const targetPower = 760 * Math.pow(1.035, s - 1);
-    const count = Math.min(5, 3 + Math.floor(s / 15));
-    const boss = s % 10 === 0;
+    // 首次推到：1 只红色首领 + 5 只绿/蓝/紫小怪；通关后再打此关不带红色首领，仅绿/蓝/紫
+    const count = firstClear ? 6 : Math.min(5, 3 + Math.floor(s / 15));
     const arr = [];
     for (let i = 0; i < count; i++) {
+      const isBoss = firstClear && i === 0;
       let share = targetPower / count;
-      if (boss && i === 0) share *= 1.8;
+      if (isBoss) share *= 2.2;
       const el = ELEMENTS[(i + s) % 5];
+      const q = isBoss ? 5 : [1, 2, 3][(i + s) % 3];
+      const qName = isBoss ? '红' : ['绿', '蓝', '紫'][(i + s) % 3];
       arr.push(buildEnemyUnit({
-        name: ['蛮兽', '山精', '魔修', '邪祟', '鬼将', '妖王', '心魔', '冥卫'][(i + s) % 8] + (boss && i === 0 ? '·首领' : ''),
-        el, boss: boss && i === 0, role: i % 3 === 0 ? 'tank' : 'atk',
+        name: ['蛮兽', '山精', '魔修', '邪祟', '鬼将', '妖王', '心魔', '冥卫'][(i + s) % 8] + (isBoss ? '·赤尊' : ''),
+        el, q, qName, boss: isBoss, role: i % 3 === 0 ? 'tank' : 'atk',
         hp: Math.round(share * 0.42),
         atk: Math.round(share * 0.10),
         def: Math.round(share * 0.06),
         spd: 90 + Math.min(130, s * 1.2) + i * 6,
         crit: 0.05 + s * 0.002, critDmg: 0,
-        silImmune: (boss && i === 0) ? Math.random() < 0.45 : false,
+        silImmune: isBoss ? (Math.random() < 0.5) : false,
         skills: [
           { name: '妖风', type: 'dmg', mult: 1.6, cd: 2, target: 'one' },
           { name: '重击', type: 'dmg', mult: 2.0, cd: 3, target: 'one' }
@@ -1735,7 +1746,7 @@ code.num { font-family: Consolas, monospace; }
   }
 
   // ---------- 主线 ----------
-  function enemyForStage(stage) { return makeEnemies(stage); }
+  function enemyForStage(stage, firstClear) { return makeEnemies(stage, firstClear); }
   function stageReward(state) {
     const s = state.mainline.stage;
     const base = rates(state);
@@ -1745,8 +1756,9 @@ code.num { font-family: Consolas, monospace; }
   }
   function challengeMainline(state, cb) {
     const stage = state.mainline.stage;
+    const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage);
+    const enemyUnits = enemyForStage(stage, firstClear);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
@@ -1762,6 +1774,7 @@ code.num { font-family: Consolas, monospace; }
         state.equipment.push(e);
         if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
       }
+      state.mainline.cleared = Math.max(state.mainline.cleared || 0, stage);
       state.mainline.stage++;
       return { ok: true, stage, reward: rw, res };
     }
@@ -1774,8 +1787,9 @@ code.num { font-family: Consolas, monospace; }
   // 挂机当前关卡：胜利只拿奖励不推进；打不过则退回上一层继续挂机
   function farmMainline(state, cb) {
     const stage = state.mainline.stage;
+    const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage);
+    const enemyUnits = enemyForStage(stage, firstClear);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
@@ -1791,6 +1805,7 @@ code.num { font-family: Consolas, monospace; }
         state.equipment.push(e);
         if (cb) cb({ msg: '掉落装备：' + e.quality + '·' + slotName(e.slot), cls: 'loot' });
       }
+      state.mainline.cleared = Math.max(state.mainline.cleared || 0, stage);
       return { ok: true, stage, reward: rw, res, farmed: true };
     }
     state.mainline.stage = Math.max(1, state.mainline.stage - 1);
@@ -2105,10 +2120,10 @@ code.num { font-family: Consolas, monospace; }
     const heroNm = g.heroName || race.name + '道友';
     const heroSt = C.unitStats(g, 'hero');
     const pu = C.formationUnits(g);
-    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct) =>
+    const slotHtml = (side, idx, nm, color, lv, hp, maxh, hero, boss, startPct, q, qName) =>
       '<div class="slot' + (hero ? ' slot-hero' : boss ? ' slot-boss' : '') + '" data-side="' + side + '" data-idx="' + idx + '" data-hp="' + Math.round(hp) + '" data-maxh="' + Math.round(maxh) + '">' +
       '<div class="slot-name" style="color:' + color + '">' + nm + '</div>' +
-      '<div class="slot-lv">' + lv + '</div>' +
+      '<div class="slot-lv">' + (q ? '<span class="slot-q" style="color:' + qColor(q) + '">' + qName + '</span> ' : '') + lv + '</div>' +
       '<div class="slot-hp"><i style="width:' + Math.max(0, Math.min(100, hp / maxh * 100)) + '%"></i></div>' +
       '<div class="slot-energy"><i style="width:' + (startPct || 0) + '%"></i></div></div>';
     let ph = '';
@@ -2117,9 +2132,9 @@ code.num { font-family: Consolas, monospace; }
       else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', 'Lv.' + p.level, hps, Math.max(1, hps), false, false, 20); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
-    const enemies = C.enemyForStage(stage);
+    const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
     let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15); });
+    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, ELEMC[en.element] || '#fff', stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
@@ -2342,7 +2357,7 @@ code.num { font-family: Consolas, monospace; }
     v.innerHTML = html;
   }
 
-  function qColor(q) { return { 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
+  function qColor(q) { return { 1: 'var(--green)', 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
 
   // ---------- 装备 / 法宝 ----------
   function renderEquip(v) {
