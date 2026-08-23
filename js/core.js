@@ -658,7 +658,7 @@
   function layerCost(state) {
     const idx = state.realm.idx, layer = state.realm.layer;
     const mult = REALMS[idx].mult;
-    return Math.round(120 * Math.pow(mult, 1.2) * Math.pow(layer, 1.5));
+    return Math.round(300 * Math.pow(mult, 1.9) * Math.pow(layer, 2.2));
   }
   function breakthroughLayer(state, usePill) {
     if (state.realm.layer >= MAX_LAYER) return { ok: false, msg: '已圆满，请渡劫大境界' };
@@ -687,10 +687,18 @@
     const r = REALMS[state.realm.idx];
     return r.name + '·' + layerName(state.realm.layer) + '层';
   }
+  // 道友独立境界：按等级划分，品质越高可修到的境界越高（最高到渡劫）
+  function partnerRealmLabel(p) {
+    const LPR = 15; // 每 15 级一个大境界
+    const idx = Math.min(8, Math.floor((p.level - 1) / LPR));
+    const inRealm = (p.level - 1) % LPR;
+    const layer = Math.max(1, Math.min(20, 1 + Math.floor(inRealm * 19 / LPR)));
+    return REALMS[idx].name + '·' + layerName(layer) + '层';
+  }
   function tribulationCost(state) {
     const idx = state.realm.idx;
     const mult = REALMS[idx].mult;
-    return Math.round(1600 * Math.pow(mult, 1.2) * (1 + idx * 0.3));
+    return Math.round(60000 * Math.pow(mult, 1.9) * (1 + idx * 0.6));
   }
   function tribulationInfo(state) {
     if (state.realm.layer < MAX_LAYER) return { maxed: false };
@@ -1307,7 +1315,7 @@
   CJ.Core = {
     newGame, hasSave, load, save, wipe, exportSave, importSave,
     tick, offlineGains, rates, applyGain, recomputeStats, unitStats,
-    realmLabel, tribulationInfo, tribulate, realmChance, realmFailPct,
+    realmLabel, partnerRealmLabel, tribulationInfo, tribulate, realmChance, realmFailPct,
     tribulationCost,
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
