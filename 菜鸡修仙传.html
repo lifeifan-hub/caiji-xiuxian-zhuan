@@ -2133,8 +2133,12 @@ code.num { font-family: Consolas, monospace; }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
     const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
+    // Boss 站位回归到阵型后方中间（保留原 data-idx，战斗动画按原索引定位）
+    const disp = enemies.map((en, idx) => ({ en, idx }));
+    const bp = disp.findIndex(x => x.en.boss);
+    if (bp >= 0 && disp.length > 1) { const b = disp.splice(bp, 1)[0]; disp.splice(Math.ceil(disp.length / 2), 0, b); }
     let eh = '';
-    enemies.forEach((en, i) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, i, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
+    disp.forEach(({ en, idx }) => { const hps = en.hp || en.maxHp || 100; eh += slotHtml(1, idx, en.name, REALM_COLORS[realmTier(stage)], stageRealm(stage), hps, en.maxHp || Math.max(1, hps), false, en.boss, 15, en.q, en.qName); });
     for (let i = enemies.length; i < 6; i++) eh += '<div class="slot empty" data-side="1" data-idx="' + i + '">空位</div>';
     const autoUnlocked = stage >= 30;
     const autoHtml = '<span class="bf-auto" data-act="auto"><input type="checkbox"' +
