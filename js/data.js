@@ -270,24 +270,17 @@
       goods: [
         { id: 'd', item: '渡劫丹', price: 15, qty: 1, limit: 0 },
         { id: 'zhao', item: '招募令', price: 200, qty: 1, limit: 0 },
-        { id: 'jun', item: '金卡道友包', price: 1000, qty: 1, limit: 0 },
-        { id: 'hongdong', item: '红卡道友包', price: 3000, qty: 1, limit: 0 }
+        { id: 'jun', item: '金卡道友包', price: 1000, qty: 1, limit: 3 },
+        { id: 'hongdong', item: '红卡道友包', price: 3000, qty: 1, limit: 1 }
       ]
     },
     gongfa: {
       name: '功法商店', currency: 'qiongjiang',
-      goods: [
-        { id: 'juyuan', item: '聚元丹', price: 6, qty: 1, limit: 0 },
-        { id: 'juling', item: '聚灵丹', price: 4, qty: 1, limit: 0 }
-      ]
+      goods: []
     },
     fabao: {
       name: '法宝商店', currency: 'fabao',
-      goods: [
-        { id: 'fabao', item: '随机法宝', price: 40, qty: 1, limit: 0 },
-        { id: 'qiang2', item: '强化石·百', price: 12, qty: 100, limit: 0 },
-        { id: 'lian2', item: '精炼石·百', price: 14, qty: 100, limit: 0 }
-      ]
+      goods: []
     }
   };
 
