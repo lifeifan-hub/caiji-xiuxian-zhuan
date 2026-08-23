@@ -95,12 +95,14 @@ body {
 
 /* 顶栏 */
 header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); border-bottom: 1px solid var(--line); padding: 10px 14px 8px; backdrop-filter: blur(6px); }
-#mytitle { display: flex; justify-content: space-between; align-items: center; }
-#mytitle b { color: var(--gold2); letter-spacing: 2px; font-size: 17px; }
-#realm-tag { font-size: 13px; color: var(--ink-dim); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
-.mt-right { display: flex; gap: 6px; align-items: center; }
-.hdr-name { color: var(--gold2); font-size: 13px; margin-left: 8px; letter-spacing: 1px; }
-#resbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+#mytitle { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+#mytitle .hdr-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hdr-name { color: var(--gold2); font-size: 13px; letter-spacing: 1px; font-weight: 700; }
+#hdr-res { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; justify-content: center; }
+#hdr-res .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
+#hdr-res .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
+#hdr-res .res .ico { color: var(--gold); }
+#music-btn { margin-left: auto; flex: 0 0 auto; }
 .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
 .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
 .res .ico { color: var(--gold); }
@@ -289,8 +291,15 @@ code.num { font-family: Consolas, monospace; }
     <!-- 游戏主界面 -->
     <div id="game" class="hide">
       <header id="top">
-        <div id="mytitle"><b>菜鸡修仙传</b><span id="hero-name-hdr" class="hdr-name"></span><span class="mt-right"><span id="realm-tag"></span><button id="music-btn" class="btn btn-sm" title="背景音乐">🔊</button></span></div>
-        <div id="resbar"></div>
+        <div id="mytitle">
+          <span id="hero-name-hdr" class="hdr-name"></span>
+          <div id="hdr-res">
+            <span class="res"><span class="ico">文</span>铜钱<b id="hdr-copper"></b></span>
+            <span class="res"><span class="ico">▲</span>修为<b id="hdr-xiuwei"></b></span>
+            <span class="res"><span class="ico">紫</span>紫气<b id="hdr-ziqi"></b></span>
+          </div>
+          <button id="music-btn" class="btn btn-sm" title="背景音乐">🔊</button>
+        </div>
       </header>
 
       <div id="battle-win"></div>
@@ -1984,16 +1993,12 @@ code.num { font-family: Consolas, monospace; }
     const g = S.game;
     if (!g) return;
     const nameEl = $('#hero-name-hdr');
-    if (nameEl) nameEl.textContent = '｜' + (g.heroName || RACE[g.race].name + '道友');
-    $('#realm-tag').textContent = C.realmLabel(g) + ' · 战力' + F(C.teamPower(g));
+    if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
     const res = g.res;
-    $('#resbar').innerHTML =
-      '<div class="res"><span class="ico">▲</span>修为<b>' + F(res.xiuwei) + '</b></div>' +
-      '<div class="res"><span class="ico">文</span>铜钱<b>' + F(res.copper) + '</b></div>' +
-      '<div class="res"><span class="ico">玉</span>玉液<b>' + F(res.qiongjiang) + '</b></div>' +
-      '<div class="res"><span class="ico">灵</span>灵气<b>' + F(res.lingqi) + '</b></div>' +
-      '<div class="res"><span class="ico">紫</span>紫气<b>' + F(res.ziqi) + '</b></div>' +
-      '<div class="res"><span class="ico">行</span>五行<b>' + F(res.wuxing) + '</b></div>';
+    const set = (id, v) => { const e = $(id); if (e) e.textContent = F(v); };
+    set('#hdr-copper', res.copper);
+    set('#hdr-xiuwei', res.xiuwei);
+    set('#hdr-ziqi', res.ziqi);
   }
 
   // ---------- 导航 ----------
