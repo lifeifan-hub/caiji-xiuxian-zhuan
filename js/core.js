@@ -59,7 +59,7 @@
       hero: { level: 1, exp: 0 },
       partners: [],
       formation: [], // instId 列表，顺序=站位(前排在先)
-      juling: [],    // 聚灵阵置闲伙伴
+      juling: [],    // 聚灵阵置闲道友
       equipment: [], // 装备实例
       equipped: {},  // instId -> unitRefKey('hero' | partnerInstId)
       fabao: [],     // {id, count}
@@ -80,7 +80,7 @@
       seq: 1
     };
     state.items['招募令'] = 5; // 开局赠送几次招募
-    // 赠送一个引导伙伴（根据种族给不同初始伙伴）
+    // 赠送一个引导道友（根据种族给不同初始道友）
     const starter = starterPartner(race);
     addPartner(state, starter, 1);
     addPartner(state, pickBluePartner(), 1);
@@ -91,7 +91,7 @@
   }
 
   function starterPartner(race) {
-    // 种族对应初始伙伴
+    // 种族对应初始道友
     const map = { human: 'b05', demon: 'b02', dragon: 'b06', elf: 'b03' };
     return P.PARTNERS.find(p => p.id === map[race]);
   }
@@ -226,8 +226,8 @@
       // 进阶 星星
       const starF = 1 + p.stars * 0.12;
       atk *= starF; def *= starF; hp *= starF;
-      // 伙伴也按境界成长一部分，保持大境界推进不掉队
-      const realmPt = Math.pow(realmMult, 0.80); // 伙伴也随渡劫层次成长，保持不掉队
+      // 道友也按境界成长一部分，保持大境界推进不掉队
+      const realmPt = Math.pow(realmMult, 0.80); // 道友也随渡劫层次成长，保持不掉队
       extra = {
         hp: hp * realmPt,
         atk: atk * realmPt,
@@ -318,7 +318,7 @@
   }
 
   function julingBonus(state) {
-    // 聚灵阵: 把闲置伙伴(quality, level)换算为全队百分比
+    // 聚灵阵: 把闲置道友(quality, level)换算为全队百分比
     let val = 0;
     state.juling.forEach(iid => {
       const p = state.partners.find(x => x.iid === iid);
@@ -491,7 +491,7 @@
     return false;
   }
 
-  // ---------- 伙伴招募 ----------
+  // ---------- 道友招募 ----------
   function summonOne(state, cost, minQ) {
     // 品质权重
     const w = [0, 0, 0.55, 0.30, 0.13, 0.02];
@@ -510,7 +510,7 @@
     const existing = state.partners.find(p => p.pid === tpl.id);
     let label;
     if (existing) {
-      existing.stars += 1; label = '重复伙伴→' + tpl.name + ' 进阶+1★';
+      existing.stars += 1; label = '重复道友→' + tpl.name + ' 进阶+1★';
     } else {
       addPartner(state, tpl, 1);
       label = '招募到 ' + tpl.name + '（' + colorName(q) + '·' + P.ROLES[tpl.role] + '·' + tpl.el + '）';
@@ -529,7 +529,7 @@
 
   function upgradePartner(state, iid) {
     const p = state.partners.find(x => x.iid === iid);
-    if (!p) return { ok: false, msg: '伙伴不存在' };
+    if (!p) return { ok: false, msg: '道友不存在' };
     const tpl = partnerTpl(p.pid);
     const maxLv = pMaxLevel(tpl.q);
     if (p.level >= maxLv) return { ok: false, msg: '已满级' };
@@ -750,8 +750,8 @@
   }
   function grantShopGood(state, good) {
     const item = good.item;
-    if (item === '金卡伙伴包') { summonOne(state, null, 4); return; }
-    if (item === '红卡伙伴包') { summonOne(state, null, 5); return; }
+    if (item === '金卡道友包') { summonOne(state, null, 4); return; }
+    if (item === '红卡道友包') { summonOne(state, null, 5); return; }
     if (item === '仙品装备箱' || item === '五行装备箱') { const e = genEquip(state, item === '仙品装备箱' ? 3 : 3); state.equipment.push(e); return; }
     if (item === '随机法宝') { const fid = pick(Object.keys(P.FABAO)); const ex = state.fabao.find(x => x.id === fid); if (ex) ex.count++; else state.fabao.push({ id: fid, count: 1 }); return; }
     addItem(state, item, good.qty || 1);
