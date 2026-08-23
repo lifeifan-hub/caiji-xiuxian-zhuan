@@ -249,6 +249,9 @@
     const heroEl = g.heroEl;
     const isMaxLayer = g.realm.layer >= 20;
     const ti = isMaxLayer ? C.tribulationInfo(g) : null;
+    const need = isMaxLayer ? ti.cost : C.layerCost(g);
+    const success = isMaxLayer ? Math.round(ti.chance * 100) : 100;
+    const fail = 100 - success;
 
     // 角色卡
     const race = RACE[g.race];
@@ -284,11 +287,18 @@
       <div class="card">
         <div class="sec-title" style="margin:0">境界修为 <span class="muted">第${g.realm.layer}/20层</span></div>
         <div class="bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${layerPct(g)}%"></i></div>
-        <div class="row mt8">
-          <span class="muted">${isMaxLayer ? '圆满！渡劫：成功率' + Math.round(ti.chance * 100) + '% · 需' + F(ti.cost) + '修为 · 失败损失' + (10 + g.realm.idx * 2) + '%' : '搜集修为突破到下一层（需 ${F(C.layerCost(g))}）'}</span>
-          ${isMaxLayer
-            ? `<button class="btn btn-gold btn-sm" data-act="trib">渡劫（成功率 ${Math.round(ti.chance * 100)}% · 耗修为 ${F(ti.cost)} · 丹×${g.items['渡劫丹'] || 0}）</button>`
-            : `<button class="btn btn-sm" data-act="layerup">突破（${F(C.layerCost(g))}修为）</button>`}
+        <div class="break-wrap">
+          <button class="break-btn${isMaxLayer ? ' break-btn-trib' : ''}" data-act="${isMaxLayer ? 'trib' : 'layerup'}">
+            <span class="break-ico">${isMaxLayer ? '⚡' : '↑'}</span>
+            <span class="break-name">${isMaxLayer ? '渡劫突破' : '突破'}</span>
+          </button>
+          <div class="break-stats">
+            <div><span class="dim">当前总修为</span><b class="green">${F(g.res.xiuwei)}</b></div>
+            <div><span class="dim">本阶段所需修为</span><b class="gold">${F(need)}</b></div>
+            <div><span class="dim">成功率</span><b class="green">${success}%</b></div>
+            <div><span class="dim">突破失败几率</span><b class="red">${fail}%</b></div>
+            <div class="dim mt8">${isMaxLayer ? '渡劫丹×' + (g.items['渡劫丹'] || 0) + '（每颗+8%成功率）· 失败损失' + (10 + g.realm.idx * 2) + '%修为' : '突破下一层不失败，可无限攒修为'}</div>
+          </div>
         </div>
       </div>
 
