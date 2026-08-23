@@ -248,9 +248,8 @@
     const stage = g.mainline.stage;
     const heroEl = g.heroEl;
     const isMaxLayer = g.realm.layer >= 20;
-    const ti = isMaxLayer ? C.tribulationInfo(g) : null;
-    const need = isMaxLayer ? ti.cost : C.layerCost(g);
-    const success = isMaxLayer ? Math.round(ti.chance * 100) : 100;
+    const need = isMaxLayer ? C.tribulationCost(g) : C.layerCost(g);
+    const success = Math.round(C.realmChance(g) * 100);
     const fail = 100 - success;
 
     // 角色卡
@@ -285,19 +284,19 @@
       </div>
 
       <div class="card">
-        <div class="sec-title" style="margin:0">境界修为 <span class="muted">第${g.realm.layer}/20层</span></div>
+        <div class="sec-title" style="margin:0">境界 <span class="muted">第${g.realm.layer}/20层</span></div>
         <div class="bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${layerPct(g)}%"></i></div>
         <div class="break-wrap">
           <button class="break-btn${isMaxLayer ? ' break-btn-trib' : ''}" data-act="${isMaxLayer ? 'trib' : 'layerup'}">
-            <span class="break-ico">${isMaxLayer ? '⚡' : '↑'}</span>
-            <span class="break-name">${isMaxLayer ? '渡劫突破' : '突破'}</span>
+            <span class="break-ico">⚡</span>
+            <span class="break-name">${isMaxLayer ? '渡劫 · 破大境' : '渡劫'}</span>
           </button>
           <div class="break-stats">
             <div><span class="dim">当前总修为</span><b class="green">${F(g.res.xiuwei)}</b></div>
             <div><span class="dim">本阶段所需修为</span><b class="gold">${F(need)}</b></div>
             <div><span class="dim">成功率</span><b class="green">${success}%</b></div>
-            <div><span class="dim">突破失败几率</span><b class="red">${fail}%</b></div>
-            <div class="dim mt8">${isMaxLayer ? '渡劫丹×' + (g.items['渡劫丹'] || 0) + '（每颗+8%成功率）· 失败损失本阶段所需修为的' + (10 + g.realm.idx * 10) + '%' : '突破下一层不失败，可无限攒修为'}</div>
+            <div><span class="dim">渡劫失败几率</span><b class="red">${fail}%</b></div>
+            <div class="dim mt8">渡劫丹×${g.items['渡劫丹'] || 0}（每次渡劫最多1颗·+8%）· 失败损失本阶段所需修为的${10 + g.realm.idx * 10}%</div>
           </div>
         </div>
       </div>
@@ -540,7 +539,7 @@
       '<p><b>【种族】</b>人族控制、魔族爆发、龙人肉盾、精灵续航，玩法各异。</p>' +
       '<p><b>【战斗】</b>回合文字战斗。看速度、控制（晕/冻/沉默）、治疗、五行克制。<b>硬扛打不过，要靠先手控住敌人。</b></p>' +
       '<p><b>【仙府】</b>资源根基。灵脉决定主角品质；灵根、法阵、聚灵阵、功法、乾坤殿全面提升。</p>' +
-      '<p><b>【渡劫】</b>每大境界有20小层，圆满(20层)后可渡劫突破。渡劫消耗修为，境界越高成功率越低、失败损失的修为%越高；备<渡劫丹>提升成功率。</p>' +
+      '<p><b>【渡劫】</b>每大境界20小层，每层与破大境都需渡劫。炼气成功率95%，每提升一大境界-10%；失败损失“本阶段所需修为”的10%起、每大境界+10%；渡劫丹每次渡劫最多1颗、+8%成功率。</p>' +
       '<p><b>【伙伴】</b>招募令/紫气抽卡，蓝紫金红；多余伙伴进聚灵阵加成全队。</p>' +
       '<p><b>【灵石】</b>水月洞天刷法宝碎片、五行山拿五行石、每日副本扫荡。</p>' +
       '</div></div>' +
@@ -643,7 +642,12 @@
     },
     'auto': function () { S.autoPush = !S.autoPush; C.save(S.game); render(); },
     'hero-up': function () { const r = C.upgradeHero(S.game); toast(r.msg); C.save(S.game); render(); },
-    'layerup': function () { const r = C.breakthroughLayer(S.game); toast(r.msg); if (r.ok) { addLog('main', r.msg, 'bl-system'); C.save(S.game); } render(); },
+    'layerup': function () {
+      const pills = S.game.items['渡劫丹'] || 0;
+      const r = C.breakthroughLayer(S.game, pills > 0);
+      toast(r.msg); if (r.ok) { addLog('main', r.msg, 'bl-system'); C.save(S.game); }
+      render();
+    },
     'sum': function (a) {
       const n = +a || 1;
       const g = S.game;
