@@ -101,6 +101,21 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 
 /* 主视图 */
 #cview { flex: 1; padding: 14px 14px 90px; max-width: 640px; margin: 0 auto; width: 100%; }
+.main-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; align-items: stretch; }
+.main-duo .card { padding: 4px; margin: 0; }
+.md-name { font-size: 12px; line-height: 1.3; }
+.md-realm { font-size: 9px; color: var(--ink-dim); }
+.md-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 3px; }
+.md-stat { background: rgba(0,0,0,.25); border-radius: 4px; padding: 1px 2px; text-align: center; }
+.md-stat b { display: block; font-size: 10px; line-height: 1.15; }
+.md-stat span { color: var(--dim); font-size: 8px; }
+.md-power { font-size: 9px; color: var(--dim); margin-top: 2px; }
+.md-bar { height: 6px; margin-top: 3px; }
+.md-trib { width: 100%; padding: 2px; font-size: 11px; margin-top: 3px; }
+.md-need { font-size: 8px; color: var(--dim); margin-top: 2px; line-height: 1.2; }
+.md-pills { display: flex; gap: 2px; margin-top: 3px; flex-wrap: wrap; }
+.md-pills .btn { padding: 1px 4px; font-size: 8px; margin: 2px 0; }
+.btn-xs { padding: 1px 5px; font-size: 9px; }
 #battle-win { padding: 14px 14px 0; }
 .sec-title { font-weight: 700; color: var(--gold); letter-spacing: 1px; margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .sec-title:first-child { margin-top: 0; }
