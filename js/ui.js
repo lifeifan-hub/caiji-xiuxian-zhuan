@@ -334,39 +334,28 @@
     }
     const barPct = isMaxLayer ? 100 : Math.min(100, Math.round(g.res.xiuwei / selNeed * 100));
 
-    // 角色卡（读取当前选中单位）
+    // 角色属性 + 境界：合并为一行，左右两块，压缩
     v.innerHTML = `
-      <div class="card">
-        <div class="row xl">
-          <div><b class="gold">${selName}</b> <span class="tag">${selRealm}</span></div>
-          <div class="muted">战力 <b style="color:var(--gold)">${F(C.teamPower(g))}</b></div>
-        </div>
-        <div class="statsrow">
-          <div class="stat"><span>生命</span><b>${Math.round(st.hp)}</b></div>
-          <div class="stat"><span>攻击</span><b>${F(st.atk)}</b></div>
-          <div class="stat"><span>物防/法防</span><b>${F(st.def)}</b></div>
-          <div class="stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
-          <div class="stat"><span>五行</span><b style="color:${ELEMC[selEl] || '#fff'}">${selEl}</b></div>
-        </div>
-        <div class="dim mt8">${selId === 'hero' ? '渡劫成功每提升一层，主角与上阵道友的<strong>攻击 / 生命 / 物防 / 法防</strong>都会增强；破大境界提升更高！' : '当前查看道友：' + selName + '，渡劫提升其自身属性。'}</div>
-      </div>
-
-      <div class="card">
-        <div class="sec-title" style="margin:0">境界 <span class="muted">${selRealm} · 第${selLayer}/20层</span></div>
-        <div class="bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${barPct}%"></i></div>
-        <div class="break-wrap">
-          <button class="break-btn${isMaxLayer ? ' break-btn-trib' : ''}" data-act="${actTrib}"${tribA}>
-            <span class="break-ico">⚡</span>
-            <span class="break-name">${isMaxLayer ? '渡劫 · 破大境' : '渡劫'}</span>
-          </button>
-          <div class="break-stats">
-            <div><span class="dim">当前总修为</span><b class="green">${F(g.res.xiuwei)}</b></div>
-            <div><span class="dim">本阶段所需修为</span><b class="gold">${F(selNeed)}</b></div>
-            <div><span class="dim">成功率</span><b class="green">${selSuccess}%</b></div>
-            <div><span class="dim">渡劫失败几率</span><b class="red">${selFail}%</b></div>
-            <div class="dim mt8">渡劫丹×${g.items['渡劫丹'] || 0}（每次渡劫最多1颗·+8%）· 失败损失本阶段所需修为的${selFailPct}%</div>
-            <div class="row mt8"><button class="btn btn-sm btn-blue" data-act="usepill">使用渡劫丹(单次)</button><button class="btn btn-sm ${S.autoPill ? 'btn-green' : ''}" data-act="autopill">${S.autoPill ? '自动使用·开' : '自动使用·关'}</button>${S.singlePill ? '<span class="green"> 已装备</span>' : ''}</div>
+      <div class="main-duo">
+        <div class="card md-left">
+          <div class="md-name"><b class="gold">${selName}</b> <span class="md-realm">${selRealm}</span></div>
+          <div class="md-stats">
+            <div class="md-stat"><span>生命</span><b>${Math.round(st.hp)}</b></div>
+            <div class="md-stat"><span>攻击</span><b>${F(st.atk)}</b></div>
+            <div class="md-stat"><span>物防</span><b>${F(st.def)}</b></div>
+            <div class="md-stat"><span>法防</span><b>${F(st.def)}</b></div>
+            <div class="md-stat"><span>速度</span><b>${Math.round(st.spd)}</b></div>
+            <div class="md-stat"><span>五行</span><b style="color:${ELEMC[selEl] || '#fff'}">${selEl}</b></div>
           </div>
+          <div class="md-power">战力 ${F(C.teamPower(g))}</div>
+        </div>
+        <div class="card md-right">
+          <div class="md-realm">${selRealm} <span class="dim">第${selLayer}/20层</span></div>
+          <div class="bar md-bar${isMaxLayer ? ' red-bar' : ''}"><i style="width:${barPct}%"></i></div>
+          <button class="btn btn-sm md-trib${isMaxLayer ? ' btn-red' : ''}" data-act="${actTrib}"${tribA}>${isMaxLayer ? '渡劫·破大境' : '渡劫'}</button>
+          <div class="md-need">需${F(selNeed)} · 成功${selSuccess}% · 失败${selFail}%</div>
+          <div class="md-pills"><button class="btn btn-xs btn-blue" data-act="usepill">用丹</button><button class="btn btn-xs ${S.autoPill ? 'btn-green' : ''}" data-act="autopill">${S.autoPill ? '自动·开' : '自动·关'}</button>${S.singlePill ? '<span class="green">已装备</span>' : ''}</div>
+          <div class="dim">丹×${g.items['渡劫丹'] || 0} · 失败损失${selFailPct}%</div>
         </div>
       </div>
 
