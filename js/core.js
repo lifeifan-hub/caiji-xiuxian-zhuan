@@ -658,7 +658,7 @@
   // ---------- 仙府 ----------
   function manorCost(building, lv) {
     if (building === 'qiankun') return { lingqi: Math.round(25 * lv + 20) };
-    return { qiongjiang: Math.round(10 * Math.pow(2.2, lv)) }; // 琼浆玉液升级
+    return { qiongjiang: Math.round(5 + lv * 6) }; // 琼浆玉液升级（温和曲线）
   }
   function hasCost(state, cost) {
     if (!cost) return true;
