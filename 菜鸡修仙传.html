@@ -126,7 +126,7 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .purple { color: var(--purple); }
 .q2 { color: var(--blue); } .q3 { color: var(--purple); } .q4 { color: var(--gold); } .q5 { color: var(--red); }
 .q0 { color: #cfcfcf; } .q1 { color: #9fe08a; }
-.statsrow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+.statsrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 6px; margin-top: 8px; }
 .stat { background: rgba(0,0,0,.25); border-radius: 8px; padding: 6px; text-align: center; font-size: 12px; }
 .stat b { display: block; font-size: 14px; color: var(--ink); }
 .stat span { color: var(--dim); }
@@ -218,9 +218,29 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .nav-item.on { color: var(--gold); background: rgba(240,199,94,.1); }
 
 /* 商店 */
-.shop-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding: 9px 2px; }
+.shop-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding: 9px 2px; flex-wrap: wrap; gap: 6px; }
 .shop-item:last-child { border-bottom: none; }
 .price { color: var(--gold); font-weight: 600; }
+.eq-worn { display: flex; gap: 8px; }
+.eq-slot-line { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 5px; text-align: center; background: rgba(0,0,0,.25); }
+.eq-slot-name { font-size: 11px; color: var(--gold); display: block; margin-bottom: 3px; }
+.eq-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.eq-toolbar .btn { padding: 4px 8px; font-size: 12px; }
+.eq-row { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 8px 2px; cursor: pointer; }
+.eq-row:last-child { border-bottom: none; }
+.eq-row.worn { background: rgba(240,199,94,.06); }
+.eq-check { flex: 0 0 auto; display: flex; align-items: center; }
+.eq-check input { accent-color: var(--gold); width: 14px; height: 14px; cursor: pointer; }
+.eq-name { flex: 1 1 auto; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eq-meta { flex: 0 0 auto; font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+.eq-stat { flex: 0 0 auto; font-size: 12px; color: var(--ink); white-space: nowrap; }
+.eq-go { flex: 0 0 auto; color: var(--gold); font-size: 14px; }
+.eq-modal { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.eq-modal-card { background: #1a1336; border: 1px solid var(--gold); border-radius: 12px; padding: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+.eq-modal-title { font-size: 18px; font-weight: 800; text-align: center; }
+.eq-modal-stat { margin: 10px 0; font-size: 14px; text-align: center; }
+.eq-modal-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.eq-modal-btns .btn { flex: 1 1 44%; justify-content: center; }
 
 /* 反馈 */
 .toast { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); background: rgba(20,14,38,.96); border: 1px solid var(--gold); color: var(--gold2); padding: 9px 18px; border-radius: 999px; z-index: 99; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.5); max-width: 90%; text-align: center; }
@@ -288,12 +308,22 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .dmg-pop.heal { color: var(--green); }
 @keyframes dmgUp { 0% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -34px); opacity: 0; } }
 .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; border: 1px solid var(--line); }
-.sec-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
+.sec-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .sec-tabs .btn { white-space: nowrap; flex: 0 0 auto; }
 .help-block { color: var(--ink-dim); font-size: 13px; }
 .help-block b { color: var(--gold); }
 code.num { font-family: Consolas, monospace; }
-@media (max-width: 400px) { body { font-size: 14px; } #resbar { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) {
+  body { font-size: 14px; }
+  .eq-worn { flex-wrap: wrap; }
+  .eq-slot-line { min-width: 44%; }
+  .partner-card { flex-wrap: wrap; }
+  .partner-card .p-btncol { display: flex; gap: 4px; flex-wrap: wrap; }
+  .partner-card .p-btncol .btn { margin-top: 0; }
+  .row.xl { flex-wrap: wrap; }
+  .bf-fm-row { gap: 3px; }
+  .fm-slot { padding: 3px 1px; }
+}
 
 </style>
 </head>
@@ -555,14 +585,13 @@ code.num { font-family: Consolas, monospace; }
   // ---------- 装备槽位 ----------
   const SLOTS = [
     { id: 'weapon', name: '武器' },
-    { id: 'armor', name: '防具' },
-    { id: 'boots', name: '靴子' },
-    { id: 'accessory', name: '饰品' },
-    { id: 'treasure', name: '灵宝' }
+    { id: 'armor', name: '胸甲' },
+    { id: 'accessory', name: '玉佩' },
+    { id: 'necklace', name: '项链' }
   ];
   const EQUIP_QUALITY = ['白', '绿', '蓝', '紫', '金', '红'];
   // 主属性随槽位变化
-  const SLOT_STAT = { weapon: 'atk', armor: 'def', boots: 'spd', accessory: 'hp', treasure: 'atk' };
+  const SLOT_STAT = { weapon: 'atk', armor: 'def', accessory: 'hp', necklace: 'spd' };
   // 套装
   const SETS = {
     '青锋': { pieces: 2, bonus: { atk: 6 } },
@@ -805,6 +834,7 @@ code.num { font-family: Consolas, monospace; }
     });
     state.formation = state.formation || [];
     if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
+    (state.equipment || []).forEach(e => { if (e.slot === 'boots' || e.slot === 'treasure') { e.slot = e.slot === 'boots' ? 'necklace' : 'necklace'; } });
     return state;
   }
 
@@ -1095,6 +1125,17 @@ code.num { font-family: Consolas, monospace; }
     addItem(state, '强化石', 2 + q);
     addItem(state, '精炼石', q >= 2 ? q : 0);
     return e;
+  }
+  function sellEquip(state, iid) {
+    const idx = state.equipment.findIndex(e => e.iid === iid);
+    if (idx < 0) return { ok:false, msg:'装备不存在' };
+    const e = state.equipment[idx];
+    if (state.equipped[iid]) return { ok:false, msg:'请先卸下再出售' };
+    state.equipment.splice(idx, 1);
+    const q = QMAP[e.quality];
+    const price = (40 + q * 60 + e.enh * 5 + e.ref * 20 + e.fumo * 15);
+    state.res.copper += price;
+    return { ok:true, copper: price, msg:'出售 ' + slotName(e.slot) + '·' + e.quality + ' 获得铜钱+' + price };
   }
 
   function addItem(state, name, n) { state.items[name] = (state.items[name] || 0) + (n || 1); }
@@ -1989,7 +2030,7 @@ code.num { font-family: Consolas, monospace; }
     partnerTribulate, partnerLayerCost,
     upgradeManor, manorCost, hasCost, payCost,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
-    enhanceEquip, refineEquip, fumoEquip, equipTo, unequip,
+    enhanceEquip, refineEquip, fumoEquip, equipTo, unequip, sellEquip,
     craftFabao, equipFabao, fabaoBonus,
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
@@ -2024,6 +2065,7 @@ code.num { font-family: Consolas, monospace; }
   const S = {
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false,
+    eqFilter: '', eqSel: {}, equipModal: null,
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -2271,6 +2313,7 @@ code.num { font-family: Consolas, monospace; }
 
   function render() {
     renderHeader();
+    if (!S.equipModal) { const m = document.getElementById('equip-modal'); if (m) m.remove(); }
     if (!S.animating) {
       const bw = $('#battle-win');
       if (bw) bw.innerHTML = battleWindowHtml();
@@ -2374,6 +2417,8 @@ code.num { font-family: Consolas, monospace; }
         </div>
       </div>
 
+      ${equipConfigHtml(g)}
+
       <div class="card">
         <div class="sec-title" style="margin:0">挂机收益</div>
         <div class="statsrow">
@@ -2393,7 +2438,6 @@ code.num { font-family: Consolas, monospace; }
     `;
     // 合并道友 + 装备页
     v.insertAdjacentHTML('beforeend', renderPartner());
-    v.insertAdjacentHTML('beforeend', renderEquip());
     renderLog('#battle-log', S.logMain);
   }
 
@@ -2504,6 +2548,80 @@ code.num { font-family: Consolas, monospace; }
 
   function qColor(q) { return { 1: 'var(--green)', 2: 'var(--blue)', 3: 'var(--purple)', 4: 'var(--gold)', 5: 'var(--red)' }[q] || 'var(--ink)'; }
 
+  // ---------- 装备配置 ----------
+  function equipSlots() { return ['weapon', 'armor', 'accessory', 'necklace']; }
+  function equipStatName(slot) { return { atk: '攻击', def: '物防', hp: '生命', spd: '速度' }[DATA.SLOT_STAT[slot]] || '属性'; }
+  function equipStatVal(e) { const q = DATA.QMAP[e.quality]; return Math.round(e.baseValue * [1, 1.4, 2, 3, 4.5, 7][q] * (1 + e.enh * 0.06 + e.ref * 0.09)); }
+  function equipOn(g, key) { return g.equipment.find(x => x.iid && g.equipped[x.iid] === key); }
+  function equipConfigHtml(g) {
+    const key = S.selUnit || 'hero';
+    const uname = key === 'hero' ? (g.heroName || (RACE[g.race].name + '道友')) : (DATA.PARTNERS.find(x => x.id === g.partners.find(p => p.iid === key).pid).name);
+    let html = '<div class="sec-title">装备配置 <span class="muted">' + uname + '</span></div>';
+    html += '<div class="card"><div class="eq-worn">';
+    equipSlots().forEach(sid => {
+      const sl = DATA.SLOTS.find(s => s.id === sid);
+      const eq = g.equipment.find(x => x.slot === sid && g.equipped[x.iid] === key);
+      const inner = eq ? '<b class="' + QCOLOR[DATA.QMAP[eq.quality]] + '">' + sl.name + '·' + eq.quality + '</b><span class="dim">' + equipStatName(sid) + '+' + equipStatVal(eq) + '</span>' : '<span class="dim">' + sl.name + '（空）</span>';
+      html += '<div class="eq-slot-line"><span class="eq-slot-name">' + sl.name + '</span><span>' + inner + '</span></div>';
+    });
+    html += '</div><div class="dim mt8">点击下方装备库查看/穿戴/锻造；上阵阵容选中谁就是给谁配装。</div></div>';
+    html += equipInventoryHtml(g, true);
+    return html;
+  }
+  function equipInventoryHtml(g, clickable) {
+    let html = '<div class="card"><div class="sec-title" style="margin:0">装备库 <span class="muted">' + g.equipment.length + ' 件 · 已选 ' + Object.keys(S.eqSel).filter(k => S.eqSel[k]).length + '</span></div>';
+    html += '<div class="eq-toolbar">';
+    html += '<button class="btn btn-sm ' + (S.eqFilter === '' ? 'btn-gold' : '') + '" data-act="eqfilter" data-a="">全部</button>';
+    for (let q = 1; q <= 5; q++) html += '<button class="btn btn-sm ' + (S.eqFilter === q ? 'btn-gold' : '') + '" data-act="eqfilter" data-a="' + q + '" style="color:' + qColor(q) + ';border-color:currentColor">' + C.colorName(q) + '</button>';
+    html += '<button class="btn btn-sm btn-green" data-act="eqselall">全选</button>';
+    html += '<button class="btn btn-sm btn-blue" data-act="eqsell">一键出售</button>';
+    html += '<button class="btn btn-sm btn-red" data-act="eqdecom">一键分解</button>';
+    html += '</div>';
+    const list = g.equipment.filter(e => !S.eqFilter || DATA.QMAP[e.quality] === S.eqFilter);
+    if (!list.length) html += '<div class="dim mt8">暂无符合的装备。</div>';
+    list.forEach(e => {
+      const q = DATA.QMAP[e.quality];
+      const sl = DATA.SLOTS.find(s => s.id === e.slot);
+      const on = !!g.equipped[e.iid];
+      const checked = S.eqSel[e.iid] ? ' checked' : '';
+      html += '<div class="eq-row' + (on ? ' worn' : '') + '" data-eqopen="' + e.iid + '"><label class="eq-check"><input type="checkbox" data-eqsel="' + e.iid + '"' + checked + '></label>' +
+        '<span class="eq-name" style="color:' + qColor(q) + '"><b class="' + QCOLOR[q] + '">' + sl.name + '·' + e.quality + '</b>' + (on ? '<span class="green"> 已穿</span>' : '') + '</span>' +
+        '<span class="eq-meta">强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + '</span>' +
+        '<span class="eq-stat">' + equipStatName(e.slot) + '+' + equipStatVal(e) + '</span>' +
+        (clickable ? '<span class="eq-go">✎</span>' : '') + '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function renderEquipModal() {
+    const old = document.getElementById('equip-modal');
+    if (old) old.remove();
+    if (!S.equipModal) return;
+    const g = S.game;
+    const e = g.equipment.find(x => x.iid === S.equipModal);
+    if (!e) { S.equipModal = null; return; }
+    const q = DATA.QMAP[e.quality];
+    const sl = DATA.SLOTS.find(s => s.id === e.slot);
+    const on = g.equipped[e.iid];
+    const targetName = (S.selUnit === 'hero') ? (g.heroName || (RACE[g.race].name + '道友')) : (() => { const p = g.partners.find(x => x.iid === S.selUnit); return p ? DATA.PARTNERS.find(x => x.id === p.pid).name : ''; })();
+    const d = document.createElement('div');
+    d.id = 'equip-modal';
+    d.className = 'eq-modal';
+    d.innerHTML = '<div class="eq-modal-card"><div class="eq-modal-title" style="color:' + qColor(q) + '">' + sl.name + ' · ' + e.quality + '</div>' +
+      '<div class="eq-modal-stat">' + equipStatName(e.slot) + ' +' + equipStatVal(e) + ' <span class="dim">强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + (e.set ? ' · ' + e.set : '') + '</span></div>' +
+      '<div class="dim">当前穿戴：' + (on ? ((on === 'hero') ? (g.heroName || '主角') : (() => { const p = g.partners.find(x => x.iid === on); return p ? DATA.PARTNERS.find(x => x.id === p.pid).name : ''; })()) : '未穿戴') + '</div>' +
+      '<div class="eq-modal-btns">' +
+      '<button class="btn btn-sm btn-green" data-act="eq" data-a="' + e.iid + '">穿戴到 ' + targetName + '</button>' +
+      '<button class="btn btn-sm" data-act="enh" data-a="' + e.iid + '">强化+' + e.enh + '</button>' +
+      '<button class="btn btn-sm" data-act="ref" data-a="' + e.iid + '">精炼+' + e.ref + '</button>' +
+      '<button class="btn btn-sm" data-act="fum" data-a="' + e.iid + '">附魔+' + e.fumo + '</button>' +
+      '<button class="btn btn-sm btn-red" data-act="dec" data-a="' + e.iid + '">分解</button>' +
+      '<button class="btn btn-sm" data-act="sell" data-a="' + e.iid + '">出售</button>' +
+      '<button class="btn btn-sm" data-act="emclose">关闭</button>' +
+      '</div></div>';
+    document.body.appendChild(d);
+  }
+
   // ---------- 次元空间 ----------
   function renderDimension(v) {
     const g = S.game;
@@ -2528,16 +2646,7 @@ code.num { font-family: Consolas, monospace; }
     return html;
   }
   function dimEquipHtml(g) {
-    let html = '<div class="card"><div class="sec-title" style="margin:0">装备 <span class="muted">共 ' + g.equipment.length + ' 件</span></div>';
-    if (!g.equipment.length) html += '<div class="dim mt8">暂无装备，主线掉落或仙府·器宝锻造。</div>';
-    g.equipment.forEach(e => {
-      const sl = DATA.SLOTS.find(s => s.id === e.slot);
-      const on = g.equipped[e.iid];
-      const onTxt = on ? (on === 'hero' ? '（主角）' : ((g.partners.find(p => p.iid === on) || {}).name || '')) : '';
-      html += '<div class="shop-item"><span><b class="' + QCOLOR[DATA.QMAP[e.quality]] + '">' + sl.name + '·' + e.quality + '</b> 强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + ' ' + onTxt + '</span><span><button class="btn btn-sm btn-green" data-act="eq" data-a="' + e.iid + '">装备</button> <button class="btn btn-sm" data-act="enh" data-a="' + e.iid + '">强化</button> <button class="btn btn-sm" data-act="ref" data-a="' + e.iid + '">精炼</button> <button class="btn btn-sm" data-act="fum" data-a="' + e.iid + '">附魔</button> <button class="btn btn-sm btn-red" data-act="dec" data-a="' + e.iid + '">分解</button></span></div>';
-    });
-    html += '</div>';
-    return html;
+    return equipInventoryHtml(g, false);
   }
   function dimPartnerHtml(g) {
     let html = '<div class="card"><div class="sec-title" style="margin:0">道友 <span class="muted">共 ' + g.partners.length + ' 位</span></div>';
@@ -2886,11 +2995,18 @@ code.num { font-family: Consolas, monospace; }
       C.recomputeStats(g); C.save(g); render();
     },
     'equnit': function (a) { S.equipUnit = a; render(); },
-    'eq': function (a) { const r = C.equipTo(S.game, a, S.equipUnit); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'enh': function (a) { const r = C.enhanceEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'ref': function (a) { const r = C.refineEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'fum': function (a) { const r = C.fumoEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'dec': function (a) { const r = C.decomposeEquip(S.game, a); toast(r ? '分解获得材料' : '请先卸下'); if (r) C.save(S.game); render(); },
+    'eq': function (a) { const r = C.equipTo(S.game, a, S.selUnit || 'hero'); toast(r.msg); if (r.ok) C.save(S.game); render(); if (S.equipModal) renderEquipModal(); },
+    'enh': function (a) { const r = C.enhanceEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); if (S.equipModal) renderEquipModal(); },
+    'ref': function (a) { const r = C.refineEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); if (S.equipModal) renderEquipModal(); },
+    'fum': function (a) { const r = C.fumoEquip(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); if (S.equipModal) renderEquipModal(); },
+    'dec': function (a) { const r = C.decomposeEquip(S.game, a); toast(r ? '分解获得材料' : '请先卸下'); if (r) { C.save(S.game); if (S.equipModal) S.equipModal = null; } render(); },
+    'sell': function (a) { const r = C.sellEquip(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); if (S.equipModal) S.equipModal = null; } render(); },
+    'eqfilter': function (a) { S.eqFilter = a === '' ? '' : +a; render(); },
+    'eqselall': function () { const g = S.game; const list = g.equipment.filter(e => !S.eqFilter || DATA.QMAP[e.quality] === S.eqFilter); const all = list.length > 0 && list.every(e => S.eqSel[e.iid]); list.forEach(e => S.eqSel[e.iid] = !all); render(); },
+    'eqsell': function () { const g = S.game; let n = 0, copper = 0; Object.keys(S.eqSel).forEach(k => { if (S.eqSel[k]) { const r = C.sellEquip(g, k); if (r.ok) { n++; copper += r.copper || 0; } } }); S.eqSel = {}; if (S.equipModal) S.equipModal = null; toast('出售 ' + n + ' 件，铜钱 +' + copper); C.save(g); render(); },
+    'eqdecom': function () { const g = S.game; let n = 0; Object.keys(S.eqSel).forEach(k => { if (S.eqSel[k]) { if (C.decomposeEquip(g, k)) n++; } }); S.eqSel = {}; if (S.equipModal) S.equipModal = null; toast('分解 ' + n + ' 件获得材料'); C.save(g); render(); },
+    'eqopen': function (a) { S.equipModal = a; renderEquipModal(); },
+    'emclose': function () { S.equipModal = null; render(); },
     'craft': function (a) { const r = C.craftFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'fab': function (a) { const r = C.equipFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'buy': function (a, b) { const r = C.buyShop(S.game, a, b); toast(r.msg); if (r.ok) C.save(S.game); render(); },
@@ -2930,6 +3046,12 @@ code.num { font-family: Consolas, monospace; }
     // 聚灵阵点击移出
     const j = e.target.closest('[data-juling]');
     if (j) { act.jld(j.dataset.juling); return; }
+    // 装备勾选
+    const eqchk = e.target.closest('[data-eqsel]');
+    if (eqchk) { e.preventDefault(); e.stopPropagation(); const id = eqchk.dataset.eqsel; S.eqSel[id] = !S.eqSel[id]; render(); return; }
+    // 装备行详情(打开弹窗)
+    const eqop = e.target.closest('[data-eqopen]');
+    if (eqop) { act.eqopen(eqop.dataset.eqopen); return; }
     // 上阵阵容点击选中
     const fm = e.target.closest('[data-fm]');
     if (fm) { act.sel(fm.dataset.fm); return; }
