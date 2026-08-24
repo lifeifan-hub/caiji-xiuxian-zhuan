@@ -886,9 +886,29 @@
     };
   }
 
-  function makeEnemies(stage, firstClear) {
+  function makeEnemies(stage, firstClear, farm) {
     const s = stage;
     const targetPower = 760 * Math.pow(1.035, s - 1);
+    if (farm) {
+      const count = 1 + Math.floor(Math.random() * 3); // 挂机只随机 1-3 只小怪
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+        const share = targetPower / Math.max(2, count);
+        const el = ELEMENTS[(i + s) % 5];
+        const q = [1, 2, 3][(i + s) % 3];
+        arr.push(buildEnemyUnit({
+          name: ['蛮兽', '山精', '魔修', '邪祟', '鬼将', '妖王', '心魔', '冥卫'][(i + s) % 8],
+          el, q, qName: ['绿', '蓝', '紫'][(i + s) % 3], boss: false, role: i % 3 === 0 ? 'tank' : 'atk',
+          hp: Math.round(share * 0.42), atk: Math.round(share * 0.10), def: Math.round(share * 0.06),
+          spd: 90 + Math.min(130, s * 1.2) + i * 6, crit: 0.05 + s * 0.002, critDmg: 0, silImmune: false,
+          skills: [
+            { name: '妖风', type: 'dmg', mult: 1.6, cd: 2, target: 'one' },
+            { name: '重击', type: 'dmg', mult: 2.0, cd: 3, target: 'one' }
+          ]
+        }));
+      }
+      return arr;
+    }
     // 首次推到：1 只红色首领 + 5 只绿/蓝/紫小怪；通关后再打此关不带红色首领，仅绿/蓝/紫
     const count = firstClear ? 6 : Math.min(5, 3 + Math.floor(s / 15));
     const arr = [];
@@ -1180,7 +1200,7 @@
   }
 
   // ---------- 主线 ----------
-  function enemyForStage(stage, firstClear) { return makeEnemies(stage, firstClear); }
+  function enemyForStage(stage, firstClear, farm) { return makeEnemies(stage, firstClear, farm); }
   function stageReward(state) {
     const s = state.mainline.stage;
     // 前50关：修为40-120 / 铜钱60-180，每50关一档 ×1.5
@@ -1194,7 +1214,7 @@
     const stage = state.mainline.stage;
     const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage, firstClear);
+    const enemyUnits = enemyForStage(stage, firstClear, false);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
@@ -1225,7 +1245,7 @@
     const stage = state.mainline.stage;
     const firstClear = stage > (state.mainline.cleared || 0);
     const playerUnits = formationUnits(state).map(u => buildPlayerUnit(state, u.iid)).filter(Boolean);
-    const enemyUnits = enemyForStage(stage, firstClear);
+    const enemyUnits = enemyForStage(stage, firstClear, true);
     const res = simulateBattle(playerUnits, enemyUnits, cb, { maxRounds: 30 });
     if (res.winner === 'ally') {
       const rw = stageReward(state);
