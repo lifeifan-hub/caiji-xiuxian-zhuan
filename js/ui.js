@@ -514,11 +514,13 @@
     equipSlots().forEach(sid => {
       const sl = DATA.SLOTS.find(s => s.id === sid);
       const eq = g.equipment.find(x => x.slot === sid && g.equipped[x.iid] === key);
-      const inner = eq ? '<b class="' + QCOLOR[DATA.QMAP[eq.quality]] + '">' + sl.name + '·' + eq.quality + '</b><span class="dim">' + equipStatName(sid) + '+' + equipStatVal(eq) + '</span>' : '<span class="dim">' + sl.name + '（空）</span>';
-      html += '<div class="eq-slot-line"><span class="eq-slot-name">' + sl.name + '</span><span>' + inner + '</span></div>';
+      const q = eq ? DATA.QMAP[eq.quality] : 0;
+      const style = eq ? ' style="border-color:' + qColor(q) + '"' : '';
+      const cls = 'eq-slot-line' + (eq ? ' filled' : '');
+      const inner = eq ? '<span class="eq-slot-name" style="color:' + qColor(q) + '">' + sl.name + '</span><span class="eq-q" style="color:' + qColor(q) + '">' + eq.quality + '</span>' : '<span class="eq-slot-name">' + sl.name + '</span><span class="eq-q dim">空</span>';
+      html += '<div class="' + cls + '" data-slotopen="' + sid + '"' + style + '>' + inner + '</div>';
     });
-    html += '</div><div class="dim mt8">点击下方装备库查看/穿戴/锻造；上阵阵容选中谁就是给谁配装。</div></div>';
-    html += equipInventoryHtml(g, true);
+    html += '</div><div class="dim mt8">点击部位：查看属性/强化/精炼/附魔/换装。</div></div>';
     return html;
   }
   function equipInventoryHtml(g, clickable) {
@@ -537,7 +539,7 @@
       const sl = DATA.SLOTS.find(s => s.id === e.slot);
       const on = !!g.equipped[e.iid];
       const checked = S.eqSel[e.iid] ? ' checked' : '';
-      html += '<div class="eq-row' + (on ? ' worn' : '') + '" data-eqopen="' + e.iid + '"><label class="eq-check"><input type="checkbox" data-eqsel="' + e.iid + '"' + checked + '></label>' +
+      html += '<div class="eq-row' + (on ? ' worn' : '') + '"' + (clickable ? ' data-eqopen="' + e.iid + '"' : '') + '><label class="eq-check"><input type="checkbox" data-eqsel="' + e.iid + '"' + checked + '></label>' +
         '<span class="eq-name" style="color:' + qColor(q) + '"><b class="' + QCOLOR[q] + '">' + sl.name + '·' + e.quality + '</b>' + (on ? '<span class="green"> 已穿</span>' : '') + '</span>' +
         '<span class="eq-meta">强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + '</span>' +
         '<span class="eq-stat">' + equipStatName(e.slot) + '+' + equipStatVal(e) + '</span>' +
@@ -551,27 +553,38 @@
     if (old) old.remove();
     if (!S.equipModal) return;
     const g = S.game;
-    const e = g.equipment.find(x => x.iid === S.equipModal);
-    if (!e) { S.equipModal = null; return; }
-    const q = DATA.QMAP[e.quality];
-    const sl = DATA.SLOTS.find(s => s.id === e.slot);
-    const on = g.equipped[e.iid];
-    const targetName = (S.selUnit === 'hero') ? (g.heroName || (RACE[g.race].name + '道友')) : (() => { const p = g.partners.find(x => x.iid === S.selUnit); return p ? DATA.PARTNERS.find(x => x.id === p.pid).name : ''; })();
+    const slot = S.equipModal;
+    const sl = DATA.SLOTS.find(s => s.id === slot);
+    const key = S.selUnit || 'hero';
+    const worn = g.equipment.find(x => x.slot === slot && g.equipped[x.iid] === key);
+    const targetName = (key === 'hero') ? (g.heroName || (RACE[g.race].name + '道友')) : (() => { const p = g.partners.find(x => x.iid === key); return p ? DATA.PARTNERS.find(x => x.id === p.pid).name : ''; })();
+    let detail;
+    if (worn) {
+      const q = DATA.QMAP[worn.quality];
+      detail = '<div class="eq-modal-title" style="color:' + qColor(q) + '">' + sl.name + ' · ' + worn.quality + '</div>' +
+        '<div class="eq-modal-stat">' + equipStatName(slot) + ' +' + equipStatVal(worn) + ' <span class="dim">强化' + worn.enh + ' 精炼' + worn.ref + ' 附魔' + worn.fumo + (worn.set ? ' · ' + worn.set : '') + '</span></div>' +
+        '<div class="eq-modal-btns"><button class="btn btn-sm" data-act="enh" data-a="' + worn.iid + '">强化</button><button class="btn btn-sm" data-act="ref" data-a="' + worn.iid + '">精炼</button><button class="btn btn-sm" data-act="fum" data-a="' + worn.iid + '">附魔</button></div>';
+    } else {
+      detail = '<div class="eq-modal-title">' + sl.name + '（空）</div><div class="dim">该部位暂无装备，可更换装备。</div>';
+    }
+    let changeHtml = '';
+    if (S.eqChange) {
+      const avail = g.equipment.filter(x => x.slot === slot);
+      changeHtml = '<div class="eq-change"><div class="dim">选择装备穿戴到 ' + targetName + '：</div>';
+      if (!avail.length) changeHtml += '<div class="dim">暂无该部位装备</div>';
+      avail.forEach(e => {
+        const q = DATA.QMAP[e.quality];
+        const onw = g.equipped[e.iid] === key;
+        changeHtml += '<div class="eq-change-item" data-emwear="' + e.iid + '" style="color:' + qColor(q) + '">' + sl.name + '·' + e.quality + ' ' + equipStatName(slot) + '+' + equipStatVal(e) + (onw ? '<span class="green"> 已穿</span>' : '') + '</div>';
+      });
+      changeHtml += '</div>';
+    }
     const d = document.createElement('div');
     d.id = 'equip-modal';
     d.className = 'eq-modal';
-    d.innerHTML = '<div class="eq-modal-card"><div class="eq-modal-title" style="color:' + qColor(q) + '">' + sl.name + ' · ' + e.quality + '</div>' +
-      '<div class="eq-modal-stat">' + equipStatName(e.slot) + ' +' + equipStatVal(e) + ' <span class="dim">强化' + e.enh + ' 精炼' + e.ref + ' 附魔' + e.fumo + (e.set ? ' · ' + e.set : '') + '</span></div>' +
-      '<div class="dim">当前穿戴：' + (on ? ((on === 'hero') ? (g.heroName || '主角') : (() => { const p = g.partners.find(x => x.iid === on); return p ? DATA.PARTNERS.find(x => x.id === p.pid).name : ''; })()) : '未穿戴') + '</div>' +
-      '<div class="eq-modal-btns">' +
-      '<button class="btn btn-sm btn-green" data-act="eq" data-a="' + e.iid + '">穿戴到 ' + targetName + '</button>' +
-      '<button class="btn btn-sm" data-act="enh" data-a="' + e.iid + '">强化+' + e.enh + '</button>' +
-      '<button class="btn btn-sm" data-act="ref" data-a="' + e.iid + '">精炼+' + e.ref + '</button>' +
-      '<button class="btn btn-sm" data-act="fum" data-a="' + e.iid + '">附魔+' + e.fumo + '</button>' +
-      '<button class="btn btn-sm btn-red" data-act="dec" data-a="' + e.iid + '">分解</button>' +
-      '<button class="btn btn-sm" data-act="sell" data-a="' + e.iid + '">出售</button>' +
-      '<button class="btn btn-sm" data-act="emclose">关闭</button>' +
-      '</div></div>';
+    d.innerHTML = '<div class="eq-modal-card">' + detail +
+      '<div class="eq-modal-btns mt8">' + (worn ? '<button class="btn btn-sm btn-red" data-act="emunequip">卸下装备</button>' : '') + '<button class="btn btn-sm btn-blue" data-act="emchange">更换装备</button><button class="btn btn-sm" data-act="emclose">关闭</button></div>' +
+      changeHtml + '</div>';
     document.body.appendChild(d);
   }
 
@@ -958,8 +971,11 @@
     'eqselall': function () { const g = S.game; const list = g.equipment.filter(e => !S.eqFilter || DATA.QMAP[e.quality] === S.eqFilter); const all = list.length > 0 && list.every(e => S.eqSel[e.iid]); list.forEach(e => S.eqSel[e.iid] = !all); render(); },
     'eqsell': function () { const g = S.game; let n = 0, copper = 0; Object.keys(S.eqSel).forEach(k => { if (S.eqSel[k]) { const r = C.sellEquip(g, k); if (r.ok) { n++; copper += r.copper || 0; } } }); S.eqSel = {}; if (S.equipModal) S.equipModal = null; toast('出售 ' + n + ' 件，铜钱 +' + copper); C.save(g); render(); },
     'eqdecom': function () { const g = S.game; let n = 0; Object.keys(S.eqSel).forEach(k => { if (S.eqSel[k]) { if (C.decomposeEquip(g, k)) n++; } }); S.eqSel = {}; if (S.equipModal) S.equipModal = null; toast('分解 ' + n + ' 件获得材料'); C.save(g); render(); },
-    'eqopen': function (a) { S.equipModal = a; renderEquipModal(); },
-    'emclose': function () { S.equipModal = null; render(); },
+    'slotopen': function (a) { S.equipModal = a; S.eqChange = false; renderEquipModal(); },
+    'emchange': function () { S.eqChange = !S.eqChange; renderEquipModal(); },
+    'emunequip': function () { const g = S.game, key = S.selUnit || 'hero'; const worn = g.equipment.find(x => x.slot === S.equipModal && g.equipped[x.iid] === key); if (worn) { C.unequip(g, worn.iid); C.recomputeStats(g); C.save(g); } render(); renderEquipModal(); },
+    'emwear': function (a) { C.equipTo(S.game, a, S.selUnit || 'hero'); C.recomputeStats(S.game); C.save(S.game); S.eqChange = false; render(); renderEquipModal(); },
+    'emclose': function () { S.equipModal = null; S.eqChange = false; render(); },
     'craft': function (a) { const r = C.craftFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'fab': function (a) { const r = C.equipFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'buy': function (a, b) { const r = C.buyShop(S.game, a, b); toast(r.msg); if (r.ok) C.save(S.game); render(); },
@@ -999,12 +1015,15 @@
     // 聚灵阵点击移出
     const j = e.target.closest('[data-juling]');
     if (j) { act.jld(j.dataset.juling); return; }
+    // 装备部位选中
+    const so = e.target.closest('[data-slotopen]');
+    if (so) { act.slotopen(so.dataset.slotopen); return; }
+    // 弹窗内选装穿戴
+    const ew = e.target.closest('[data-emwear]');
+    if (ew) { act.emwear(ew.dataset.emwear); return; }
     // 装备勾选
     const eqchk = e.target.closest('[data-eqsel]');
     if (eqchk) { e.preventDefault(); e.stopPropagation(); const id = eqchk.dataset.eqsel; S.eqSel[id] = !S.eqSel[id]; render(); return; }
-    // 装备行详情(打开弹窗)
-    const eqop = e.target.closest('[data-eqopen]');
-    if (eqop) { act.eqopen(eqop.dataset.eqopen); return; }
     // 上阵阵容点击选中
     const fm = e.target.closest('[data-fm]');
     if (fm) { act.sel(fm.dataset.fm); return; }
