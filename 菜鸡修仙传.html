@@ -2955,14 +2955,15 @@ code.num { font-family: Consolas, monospace; }
       S.autoPush = !S.autoPush; C.save(S.game); render();
     },
     'formation': function () {
-      if (S.animating) return;
+      if (S.animating) { toast('战斗进行中，请稍候再布阵'); return; }
       const g = S.game;
       const arr = g.formation.slice();
       for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
       g.formation = arr;
       C.recomputeStats(g);
       C.save(g);
-      toast('已随机调整站位，重新开战！');
+      render(); // 立即刷新布阵板，让站位交换可见
+      toast('已随机调整站位');
       const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
       S.battleRounds = (r.res && r.res.rounds) || 0;
       S.battleStage = r.stage;
