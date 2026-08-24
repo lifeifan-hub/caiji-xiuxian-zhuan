@@ -76,6 +76,7 @@
       shopLimit: {},
       items: {},
       pity: 0,
+      freeSummonAt: 0,
       stats: null, // 缓存
       seq: 1
     };
@@ -154,6 +155,7 @@
     state.formation = state.formation || [];
     if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
     (state.equipment || []).forEach(e => { if (e.slot === 'boots' || e.slot === 'treasure') { e.slot = e.slot === 'boots' ? 'necklace' : 'necklace'; } });
+    if (state.freeSummonAt == null) state.freeSummonAt = 0;
     return state;
   }
 
@@ -509,7 +511,7 @@
   // ---------- 道友招募 ----------
   function summonOne(state, cost, minQ) {
     // 品质权重
-    const w = [0, 0, 0.55, 0.30, 0.13, 0.02];
+    const w = [0, 0, 0.40, 0.40, 0.18, 0.02]; // 蓝40% 紫40% 金18% 红2%
     const r = Math.random();
     let q = 5, acc = 0;
     for (let qi = 5; qi >= 2; qi--) {
