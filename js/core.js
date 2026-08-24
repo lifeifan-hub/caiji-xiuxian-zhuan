@@ -64,8 +64,9 @@
       equipped: {},  // instId -> unitRefKey('hero' | partnerInstId)
       fabao: [],     // {id, count}
       equippedFabao: [], // id 列表，最多3
-      manor: { zuiyue: 1, lingmai: 0, linggen: 1, wanxiang: 1, juling: 1, gongfa: 0, qiankun: 1, lianlv: 1, duanlv: 1 },
+      manor: { zuiyue: 1, lingmai: 0, linggen: 1, wanxiang: 1, juling: 1, gongfa: 0, qiankun: 1, lianlv: 1, duanlv: 1, lianExp: 0, duanExp: 0 },
       buildTimers: {},
+      training: {},
       wanxiang: [],
       gongfa: 0,      // 已研习功法层数
       skills: ['basic'], // 主角已掌握技能 id
@@ -176,7 +177,10 @@
     if (state.manor.wanxiang == null) state.manor.wanxiang = 1;
     if (state.manor.lianlv == null) state.manor.lianlv = 1;
     if (state.manor.duanlv == null) state.manor.duanlv = 1;
+    if (state.manor.lianExp == null) state.manor.lianExp = 0;
+    if (state.manor.duanExp == null) state.manor.duanExp = 0;
     if (state.buildTimers == null) state.buildTimers = {};
+    if (state.training == null) state.training = {};
     if (state.wanxiang == null) state.wanxiang = [];
     return state;
   }
@@ -418,6 +422,7 @@
     const elapsed = clamp((now - state.lastTick) / 1000, 0, 3600); // 在线最多按1小时结算，离线单独算
     applyGain(state, elapsed);
     checkBuildTimers(state);
+    checkTrainings(state);
     state.lastTick = now;
     recomputeStats(state);
     return state;
@@ -713,6 +718,36 @@
     const cnt = Math.min(slots, (state.wanxiang || []).length);
     const pct = cnt * (1.5 + lv * 0.5);
     return { slots, cnt, pct };
+  }
+  function trainNeed(rank) { return 1000 * (rank || 1); } // 升下一品所需经验
+  function startTrain(state, cat, years) {
+    const isLian = cat === 'lian';
+    const rank = isLian ? (state.manor.lianlv || 1) : (state.manor.duanlv || 1);
+    if (rank >= 10) return { ok:false, msg:'已达十品，无法再修炼' };
+    if (state.training[cat]) return { ok:false, msg:'当前正在修炼中，请等倒计时结束' };
+    const yearsN = years === 50 ? 50 : 5;
+    const exp = yearsN * 10, cost = yearsN * 100000, dur = yearsN * 5 * 60;
+    if (state.res.copper < cost) return { ok:false, msg:'铜钱不足（需 ' + fmt(cost) + '）' };
+    state.res.copper -= cost;
+    state.training[cat] = { endAt: Date.now() + dur * 1000, exp };
+    return { ok:true, msg:'开始修炼' + yearsN + '年（' + exp + '经验 · ' + formatDuration(dur) + '）' };
+  }
+  function checkTrainings(state) {
+    const now = Date.now();
+    ['lian', 'duan'].forEach(cat => {
+      const t = state.training[cat];
+      if (t && now >= t.endAt) {
+        if (cat === 'lian') state.manor.lianExp += t.exp; else state.manor.duanExp += t.exp;
+        delete state.training[cat];
+        while (cat === 'lian' ? (state.manor.lianlv || 1) < 10 : (state.manor.duanlv || 1) < 10) {
+          const rk = cat === 'lian' ? (state.manor.lianlv || 1) : (state.manor.duanlv || 1);
+          const need = trainNeed(rk);
+          if (cat === 'lian') { if (state.manor.lianExp >= need) { state.manor.lianExp -= need; state.manor.lianlv++; } else break; }
+          else { if (state.manor.duanExp >= need) { state.manor.duanExp -= need; state.manor.duanlv++; } else break; }
+        }
+        recomputeStats(state);
+      }
+    });
   }
 
   // ---------- 炼丹 (造化乾坤殿 - 丹房) ----------
@@ -1445,6 +1480,7 @@
     partnerTribulate, partnerLayerCost, dismissPartner,
     upgradeManor, manorCost, hasCost, payCost,
     checkBuildTimers, wanxiangBonus, buildTimerDuration,
+    startTrain, checkTrainings, trainNeed,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
     enhanceEquip, refineEquip, fumoEquip, equipTo, unequip, sellEquip,
     craftFabao, equipFabao, fabaoBonus,
