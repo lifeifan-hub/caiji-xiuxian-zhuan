@@ -1163,9 +1163,11 @@
   function enemyForStage(stage, firstClear) { return makeEnemies(stage, firstClear); }
   function stageReward(state) {
     const s = state.mainline.stage;
-    const base = rates(state);
-    const xi = Math.round(base.xiuwei * 60 * 0.6 * (1 + s * 0.02));
-    const cu = Math.round(base.copper * 30 * (1 + s * 0.01));
+    // 前50关：修为40-120 / 铜钱60-180，每50关一档 ×1.5
+    const bracket = Math.floor((s - 1) / 50);
+    const mult = Math.pow(1.5, bracket);
+    const xi = Math.round((40 + Math.random() * 80) * mult);
+    const cu = Math.round((60 + Math.random() * 120) * mult);
     return { xiuwei: xi, copper: cu, equipChance: 0.25 };
   }
   function challengeMainline(state, cb) {
