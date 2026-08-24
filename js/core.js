@@ -683,13 +683,7 @@
   }
   function upgradeManor(state, building) {
     const lv = state.manor[building];
-    if (building === 'qiankun') {
-      const cost = manorCost(building, lv);
-      if (!payCost(state, cost)) return { ok:false, msg:'灵气不足' };
-      state.manor.qiankun++;
-      recomputeStats(state);
-      return { ok:true, msg:'造化乾坤殿升级成功' };
-    }
+    if (building === 'qiankun') return { ok:false, msg:'造化乾坤殿无需提升等级' };
     const maxLv = (building === 'lingmai') ? 9 : 20;
     if (building === 'gongfa' && !state.gongfaLearned) return { ok:false, msg:'需先购买并学习功法' };
     if (lv >= maxLv) return { ok:false, msg:'已满级' };
