@@ -76,6 +76,7 @@
       shopLimit: {},
       items: {},
       pity: 0,
+      vip: 0,
       freeSummonAt: 0,
       stats: null, // 缓存
       seq: 1
@@ -166,6 +167,7 @@
       }
     });
     if (state.freeSummonAt == null) state.freeSummonAt = 0;
+    if (state.vip == null) state.vip = 0;
     return state;
   }
 
@@ -197,6 +199,8 @@
     const layer = state.realm.layer;
     return REALMS[idx].mult * (1 + (layer - 1) * 0.05);
   }
+  // VIP 属性加成（角色与道友 攻/血/物防/法防 提升）
+  function vipMult(state) { return 1 + (state.vip || 0) * 0.01; }
 
   // 计算一个单位的最终属性（含装备/法宝/仙府/聚灵阵加成）
   function unitStats(state, key) {
@@ -269,6 +273,9 @@
     extra.elementDmg = (fabao.elementDmg || 0) + equipBonus.elementDmg;
     extra.critDmg = extra.critDmg || 0;
     extra.heal = extra.heal || 0;
+    extra.atk = Math.round(extra.atk * vipMult(s));
+    extra.hp = Math.round(extra.hp * vipMult(s));
+    extra.def = Math.round(extra.def * vipMult(s));
     return extra;
   }
 
@@ -367,10 +374,10 @@
     const stage = state.mainline.stage;
     // 修为/秒：随法阵、境界、关卡
     const xiuwei = Math.round(
-      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9
+      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9 * vipMult(state)
     );
     const copper = Math.round(
-      3 + realmMult * 0.4 + stage * 0.5
+      (3 + realmMult * 0.4 + stage * 0.5) * vipMult(state)
     );
     const qiongjiang = zuiyueJarsUnlocked(state); // 每樽 1/秒
     const linggen = state.manor.linggen;
@@ -521,7 +528,7 @@
   // ---------- 道友招募 ----------
   function summonOne(state, cost, minQ) {
     // 品质权重
-    const w = [0, 0, 0.40, 0.40, 0.18, 0.02]; // 蓝40% 紫40% 金18% 红2%
+    const w = (state.vip ? [0, 0, 0.39, 0.40, 0.185, 0.025] : [0, 0, 0.40, 0.40, 0.18, 0.02]); // VIP: 蓝39 紫40 金18.5 红2.5
     const r = Math.random();
     let q = 5, acc = 0;
     for (let qi = 5; qi >= 2; qi--) {
@@ -1349,6 +1356,7 @@
     const RES = ['copper','xiuwei','ziqi','qiongjiang','lingqi','wuxing','fabao'];
     if (RES.indexOf(g) >= 0) state.res[g] = (state.res[g] || 0) + q;
     else if (g === '红卡道友包' || g === '金卡道友包') { for (let i = 0; i < q; i++) grantShopGood(state, { item: g }); }
+    else if (g === 'VIP') { state.vip = Math.max(state.vip || 0, q); }
     else state.items[g] = (state.items[g] || 0) + q;
     state.codeUsed[code] = true;
     recomputeStats(state);
