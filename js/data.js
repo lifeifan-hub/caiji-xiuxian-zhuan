@@ -261,7 +261,9 @@
       goods: [
         { id: 'qianghua', item: '强化石', price: 50000, qty: 1, limit: 0 },
         { id: 'jinglian', item: '精炼石', price: 50000, qty: 1, limit: 0 },
-        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 }
+        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 },
+        { id: 'danlu1', item: '1品炼丹炉·玄铁丹炉', price: 120000, qty: 1, limit: 0 },
+        { id: 'duanlu1', item: '1品锻造炉·黑铁锻炉', price: 120000, qty: 1, limit: 0 }
       ]
     },
     purple: {
@@ -275,7 +277,9 @@
     },
     gongfa: {
       name: '功法商店', currency: 'qiongjiang',
-      goods: []
+      goods: [
+        { id: 'gf', item: '功法·秘籍', price: 20, qty: 1, limit: 0 }
+      ]
     },
     fabao: {
       name: '法宝商店', currency: 'fabao',
@@ -285,13 +289,13 @@
 
   // 仙府建筑
   const MANOR = {
-    zuiyue: { name: '醉月樽', res: '琼浆', desc: '产出琼浆玉液', baseHr: 1 },
-    lingmai: { name: '灵脉', res: '琼浆', desc: '主角核心：提升主角品质颜色', baseHr: 0 },
-    linggen: { name: '灵根', res: '灵气', desc: '全体攻防血百分比加成', baseHr: 4 },
-    fazhen: { name: '法阵', res: '修为', desc: '挂机修为产出提升', baseHr: 5 },
-    juling: { name: '聚灵阵', res: '修为', desc: '闲置道友按比例加成全队', baseHr: 0 },
-    gongfa: { name: '功法', res: '修为', desc: '研习主角主动被动功法', baseHr: 0 },
-    qiankun: { name: '造化乾坤殿', res: '灵气', desc: '丹房炼丹 + 器宝炼器', baseHr: 0 }
+    lingmai: { name: '灵脉', res: '琼浆', desc: '提升主角品质(黄→玄→地→天)', baseHr: 0 },
+    gongfa: { name: '功法', res: '琼浆', desc: '升级已学习的功法(需先购买并在物品中使用)', baseHr: 0 },
+    linggen: { name: '灵根', res: '灵气', desc: '产出灵气 + 主角百分比加成', baseHr: 4 },
+    wanxiang: { name: '万象化宇', res: '琼浆', desc: '放入多余伙伴，提升上阵伙伴属性', baseHr: 0 },
+    juling: { name: '聚灵阵', res: '修为', desc: '产出修为，等级越高越多', baseHr: 5 },
+    qiankun: { name: '造化乾坤殿', res: '灵气', desc: '升级 / 炼丹阁 / 锻造阁', baseHr: 0 },
+    zuiyue: { name: '醉月樽', res: '琼浆', desc: '产出琼浆玉液，等级越高越多', baseHr: 1 }
   };
 
   CJ.P = {
