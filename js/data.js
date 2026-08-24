@@ -262,8 +262,8 @@
         { id: 'qianghua', item: '强化石', price: 50000, qty: 1, limit: 0 },
         { id: 'jinglian', item: '精炼石', price: 50000, qty: 1, limit: 0 },
         { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 },
-        { id: 'danlu1', item: '1品炼丹炉·玄铁丹炉', price: 120000, qty: 1, limit: 0 },
-        { id: 'duanlu1', item: '1品锻造炉·黑铁锻炉', price: 120000, qty: 1, limit: 0 }
+        { id: 'danlu1', item: '1品炼丹炉·玄铁丹炉', price: 5000000, qty: 1, limit: 0 },
+        { id: 'duanlu1', item: '1品锻造炉·黑铁锻炉', price: 5000000, qty: 1, limit: 0 }
       ]
     },
     purple: {
