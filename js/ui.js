@@ -121,6 +121,11 @@
     if (!g) return;
     const nameEl = $('#hero-name-hdr');
     if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
+    const vb = $('#vip-badge');
+    if (vb) {
+      if (g.vip >= 1) { vb.classList.remove('hide'); vb.innerHTML = 'VIP<span class="vip-num">' + g.vip + '</span>'; }
+      else vb.classList.add('hide');
+    }
     const res = g.res;
     const set = (id, v) => { const e = $(id); if (e) e.textContent = F(v); };
     set('#hdr-copper', res.copper);
@@ -485,7 +490,7 @@
       '<div class="toolbar"><button class="btn btn-sm btn-blue" data-act="sumfree"' + (freeReady ? '' : ' disabled') + '>' + freeTxt + '</button>' +
       '<button class="btn btn-sm btn-gold" data-act="sum" data-a="1">单抽（1令/200紫）</button>' +
       '<button class="btn btn-sm btn-gold" data-act="sum" data-a="10">十连（1800紫）</button></div>' +
-      '<div class="dim">概率：蓝40% 紫40% 金18% 红2% · 每10抽必出金/十连必含金 · 免费单抽每8小时1次 · 重复道友自动进阶★</div></div>';
+      '<div class="dim">概率：' + (g.vip ? '蓝39% 紫40% 金18.5% 红2.5%' : '蓝40% 紫40% 金18% 红2%') + ' · 每10抽必出金/十连必含金 · 免费单抽每8小时1次 · 重复道友自动进阶★</div></div>';
 
     // 聚灵阵
     html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置道友加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
@@ -588,6 +593,22 @@
     d.innerHTML = '<div class="eq-modal-card">' + detail +
       '<div class="eq-modal-btns mt8">' + (worn ? '<button class="btn btn-sm btn-red" data-act="emunequip">卸下装备</button>' : '') + '<button class="btn btn-sm btn-blue" data-act="emchange">更换装备</button><button class="btn btn-sm" data-act="emclose">关闭</button></div>' +
       changeHtml + '</div>';
+    document.body.appendChild(d);
+  }
+  function renderVipModal() {
+    const old = document.getElementById('vip-modal');
+    if (old) old.remove();
+    const g = S.game;
+    const lv = g.vip || 0;
+    if (lv < 1) { toast('未开通VIP，请联系作者兑换激活码'); return; }
+    const d = document.createElement('div');
+    d.id = 'vip-modal';
+    d.className = 'vip-modal';
+    d.innerHTML = '<div class="vip-card"><div class="vip-modal-title">VIP' + lv + ' 特权</div>' +
+      '<div class="vip-bonus">角色与道友：攻击 / 生命 / 物防 / 法防 +' + lv + '%</div>' +
+      '<div class="vip-bonus">挂机获得：铜钱 / 修为 +' + lv + '%</div>' +
+      '<div class="vip-bonus">招募概率：蓝 39% · 紫 40% · 金 18.5% · 红 2.5%</div>' +
+      '<button class="btn btn-sm" data-act="closevip">关闭</button></div>';
     document.body.appendChild(d);
   }
 
@@ -919,6 +940,8 @@
       toast('已互换位置');
     },
     'sel': function (a) { S.selUnit = a; render(); },
+    'vip': function () { renderVipModal(); },
+    'closevip': function () { const m = document.getElementById('vip-modal'); if (m) m.remove(); },
     'cine': function () { playCine(); },
     'layerup': function () {
       const r = C.breakthroughLayer(S.game, S.autoPill || S.singlePill);
