@@ -98,6 +98,11 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 #mytitle { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 #mytitle .hdr-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hdr-name { color: var(--gold2); font-size: 13px; letter-spacing: 1px; font-weight: 700; }
+.vip-badge { position: relative; margin-left: 7px; font-size: 13px; font-weight: 900; letter-spacing: 1px; cursor: pointer; white-space: nowrap; overflow: hidden; font-family: Arial, sans-serif; background: linear-gradient(90deg, #ff4d4d, #ff9a3c, #ffe14d, #52e06a, #4db6ff, #b44dff, #ff4d4d); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vip-badge .vip-num { -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vip-badge::after { content: ''; position: absolute; top: 0; bottom: 0; left: -34%; width: 26%; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.95), rgba(255,255,255,0)); animation: vipStreak 2s linear infinite; }
+@keyframes vipStreak { from { left: -34%; } to { left: 112%; } }
+.vip-badge.hide { display: none; }
 #hdr-res { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; justify-content: center; }
 #hdr-res .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
 #hdr-res .res b { color: var(--ink); font-size: 13px; font-weight: 600; }
@@ -261,6 +266,12 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .eq-modal-stat { margin: 10px 0; font-size: 14px; text-align: center; }
 .eq-modal-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .eq-modal-btns .btn { flex: 1 1 44%; justify-content: center; }
+.vip-modal { position: fixed; inset: 0; z-index: 410; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.vip-card { background: #1a1336; border: 1px solid #ffd24a; border-radius: 12px; padding: 16px; width: 100%; max-width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+.vip-modal-title { font-size: 18px; font-weight: 900; text-align: center; margin-bottom: 8px; background: linear-gradient(90deg, #ff4d4d, #ff9a3c, #ffe14d, #52e06a, #4db6ff, #b44dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vip-bonus { position: relative; border: 2px solid #ff4a4a; border-radius: 8px; padding: 9px; margin: 10px 0; color: #fff; font-size: 13px; background: rgba(255,255,255,.04); animation: vipWave 1.4s ease-in-out infinite; }
+.vip-bonus:last-of-type { margin-bottom: 12px; }
+@keyframes vipWave { 0%,100% { border-color: #ff4a4a; box-shadow: 0 0 6px rgba(255,70,70,.5), inset 0 0 6px rgba(255,80,80,.25); } 50% { border-color: #ffb0b0; box-shadow: 0 0 16px rgba(255,80,80,.95), inset 0 0 10px rgba(255,80,80,.45); } }
 
 /* 反馈 */
 .toast { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); background: rgba(20,14,38,.96); border: 1px solid var(--gold); color: var(--gold2); padding: 9px 18px; border-radius: 999px; z-index: 99; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.5); max-width: 90%; text-align: center; }
@@ -374,6 +385,7 @@ code.num { font-family: Consolas, monospace; }
       <header id="top">
         <div id="mytitle">
           <span id="hero-name-hdr" class="hdr-name"></span>
+          <span id="vip-badge" class="vip-badge hide" data-act="vip"></span>
           <div id="hdr-res">
             <span class="res"><span class="ico">文</span>铜钱<b id="hdr-copper"></b></span>
             <span class="res"><span class="ico">▲</span>修为<b id="hdr-xiuwei"></b></span>
@@ -780,6 +792,7 @@ code.num { font-family: Consolas, monospace; }
       shopLimit: {},
       items: {},
       pity: 0,
+      vip: 0,
       freeSummonAt: 0,
       stats: null, // 缓存
       seq: 1
@@ -870,6 +883,7 @@ code.num { font-family: Consolas, monospace; }
       }
     });
     if (state.freeSummonAt == null) state.freeSummonAt = 0;
+    if (state.vip == null) state.vip = 0;
     return state;
   }
 
@@ -901,6 +915,8 @@ code.num { font-family: Consolas, monospace; }
     const layer = state.realm.layer;
     return REALMS[idx].mult * (1 + (layer - 1) * 0.05);
   }
+  // VIP 属性加成（角色与道友 攻/血/物防/法防 提升）
+  function vipMult(state) { return 1 + (state.vip || 0) * 0.01; }
 
   // 计算一个单位的最终属性（含装备/法宝/仙府/聚灵阵加成）
   function unitStats(state, key) {
@@ -973,6 +989,9 @@ code.num { font-family: Consolas, monospace; }
     extra.elementDmg = (fabao.elementDmg || 0) + equipBonus.elementDmg;
     extra.critDmg = extra.critDmg || 0;
     extra.heal = extra.heal || 0;
+    extra.atk = Math.round(extra.atk * vipMult(s));
+    extra.hp = Math.round(extra.hp * vipMult(s));
+    extra.def = Math.round(extra.def * vipMult(s));
     return extra;
   }
 
@@ -1071,10 +1090,10 @@ code.num { font-family: Consolas, monospace; }
     const stage = state.mainline.stage;
     // 修为/秒：随法阵、境界、关卡
     const xiuwei = Math.round(
-      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9
+      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9 * vipMult(state)
     );
     const copper = Math.round(
-      3 + realmMult * 0.4 + stage * 0.5
+      (3 + realmMult * 0.4 + stage * 0.5) * vipMult(state)
     );
     const qiongjiang = zuiyueJarsUnlocked(state); // 每樽 1/秒
     const linggen = state.manor.linggen;
@@ -1225,7 +1244,7 @@ code.num { font-family: Consolas, monospace; }
   // ---------- 道友招募 ----------
   function summonOne(state, cost, minQ) {
     // 品质权重
-    const w = [0, 0, 0.40, 0.40, 0.18, 0.02]; // 蓝40% 紫40% 金18% 红2%
+    const w = (state.vip ? [0, 0, 0.39, 0.40, 0.185, 0.025] : [0, 0, 0.40, 0.40, 0.18, 0.02]); // VIP: 蓝39 紫40 金18.5 红2.5
     const r = Math.random();
     let q = 5, acc = 0;
     for (let qi = 5; qi >= 2; qi--) {
@@ -2053,6 +2072,7 @@ code.num { font-family: Consolas, monospace; }
     const RES = ['copper','xiuwei','ziqi','qiongjiang','lingqi','wuxing','fabao'];
     if (RES.indexOf(g) >= 0) state.res[g] = (state.res[g] || 0) + q;
     else if (g === '红卡道友包' || g === '金卡道友包') { for (let i = 0; i < q; i++) grantShopGood(state, { item: g }); }
+    else if (g === 'VIP') { state.vip = Math.max(state.vip || 0, q); }
     else state.items[g] = (state.items[g] || 0) + q;
     state.codeUsed[code] = true;
     recomputeStats(state);
@@ -2218,6 +2238,11 @@ code.num { font-family: Consolas, monospace; }
     if (!g) return;
     const nameEl = $('#hero-name-hdr');
     if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
+    const vb = $('#vip-badge');
+    if (vb) {
+      if (g.vip >= 1) { vb.classList.remove('hide'); vb.innerHTML = 'VIP<span class="vip-num">' + g.vip + '</span>'; }
+      else vb.classList.add('hide');
+    }
     const res = g.res;
     const set = (id, v) => { const e = $(id); if (e) e.textContent = F(v); };
     set('#hdr-copper', res.copper);
@@ -2582,7 +2607,7 @@ code.num { font-family: Consolas, monospace; }
       '<div class="toolbar"><button class="btn btn-sm btn-blue" data-act="sumfree"' + (freeReady ? '' : ' disabled') + '>' + freeTxt + '</button>' +
       '<button class="btn btn-sm btn-gold" data-act="sum" data-a="1">单抽（1令/200紫）</button>' +
       '<button class="btn btn-sm btn-gold" data-act="sum" data-a="10">十连（1800紫）</button></div>' +
-      '<div class="dim">概率：蓝40% 紫40% 金18% 红2% · 每10抽必出金/十连必含金 · 免费单抽每8小时1次 · 重复道友自动进阶★</div></div>';
+      '<div class="dim">概率：' + (g.vip ? '蓝39% 紫40% 金18.5% 红2.5%' : '蓝40% 紫40% 金18% 红2%') + ' · 每10抽必出金/十连必含金 · 免费单抽每8小时1次 · 重复道友自动进阶★</div></div>';
 
     // 聚灵阵
     html += '<div class="card"><div class="sec-title" style="margin:0">聚灵阵 <span class="muted">闲置道友加成全队 ' + C.julingBonus(g).toFixed(1) + '%</span></div><div class="slot-grid">';
@@ -2685,6 +2710,22 @@ code.num { font-family: Consolas, monospace; }
     d.innerHTML = '<div class="eq-modal-card">' + detail +
       '<div class="eq-modal-btns mt8">' + (worn ? '<button class="btn btn-sm btn-red" data-act="emunequip">卸下装备</button>' : '') + '<button class="btn btn-sm btn-blue" data-act="emchange">更换装备</button><button class="btn btn-sm" data-act="emclose">关闭</button></div>' +
       changeHtml + '</div>';
+    document.body.appendChild(d);
+  }
+  function renderVipModal() {
+    const old = document.getElementById('vip-modal');
+    if (old) old.remove();
+    const g = S.game;
+    const lv = g.vip || 0;
+    if (lv < 1) { toast('未开通VIP，请联系作者兑换激活码'); return; }
+    const d = document.createElement('div');
+    d.id = 'vip-modal';
+    d.className = 'vip-modal';
+    d.innerHTML = '<div class="vip-card"><div class="vip-modal-title">VIP' + lv + ' 特权</div>' +
+      '<div class="vip-bonus">角色与道友：攻击 / 生命 / 物防 / 法防 +' + lv + '%</div>' +
+      '<div class="vip-bonus">挂机获得：铜钱 / 修为 +' + lv + '%</div>' +
+      '<div class="vip-bonus">招募概率：蓝 39% · 紫 40% · 金 18.5% · 红 2.5%</div>' +
+      '<button class="btn btn-sm" data-act="closevip">关闭</button></div>';
     document.body.appendChild(d);
   }
 
@@ -3016,6 +3057,8 @@ code.num { font-family: Consolas, monospace; }
       toast('已互换位置');
     },
     'sel': function (a) { S.selUnit = a; render(); },
+    'vip': function () { renderVipModal(); },
+    'closevip': function () { const m = document.getElementById('vip-modal'); if (m) m.remove(); },
     'cine': function () { playCine(); },
     'layerup': function () {
       const r = C.breakthroughLayer(S.game, S.autoPill || S.singlePill);
