@@ -1,6 +1,7 @@
 // 激活码生成器（作者用）：node gen_code.js <物品或资源> <数量> [有效天数=7]
 // 物品示例：渡劫丹 招募令 强化石 精炼石 附魔石 聚元丹 聚灵丹
 // 资源示例：copper xiuwei ziqi qiongjiang lingqi wuxing fabao
+// VIP 激活：VIP <等级1-18>，例如: node gen_code.js VIP 3 365
 const SECRET = 'CJXS-2026-REDEEM-#58#xQ';
 function codeHash(str) {
   let h = 0x811c9dc5;
