@@ -422,6 +422,19 @@
       const dis = (tm || lv >= maxLv) ? ' disabled' : '';
       return '<button class="btn btn-sm btn-gold" data-act="mup" data-a="' + bid + '"' + dis + '>' + label + '（玉液' + F((C.manorCost(bid, lv).qiongjiang || 0)) + '）</button> ' + tm + (lv >= maxLv && !tm ? '<span class="dim">已满级</span>' : '');
     };
+    const trainCard = (cat) => {
+      const isLian = cat === 'lian';
+      const rank = isLian ? (g.manor.lianlv || 1) : (g.manor.duanlv || 1);
+      const exp = isLian ? (g.manor.lianExp || 0) : (g.manor.duanExp || 0);
+      const need = C.trainNeed(rank);
+      const nm = isLian ? '炼丹师' : '锻造师';
+      const tr = g.training[cat];
+      const countdown = tr ? '修炼中·还差 ' + C.formatDuration(Math.max(0, (tr.endAt - Date.now()) / 1000)) : '';
+      return '<div class="card"><div class="row"><div><b class="gold">' + nm + '</b> <span class="tag">' + pinName(rank) + '</span></div><span class="green">经验 ' + exp + ' / ' + need + '</span></div>' +
+        '<div class="row mt8"><button class="btn btn-sm btn-blue" data-act="train" data-a="' + cat + '" data-b="5"' + (tr ? ' disabled' : '') + (rank >= 10 ? ' disabled' : '') + '>修炼5年(50万铜·50经验·25分)</button>' +
+        '<button class="btn btn-sm btn-blue" data-act="train" data-a="' + cat + '" data-b="50"' + (tr ? ' disabled' : '') + (rank >= 10 ? ' disabled' : '') + '>修炼50年(500万铜·500经验·4时10分)</button></div>' +
+        '<div class="dim mt8">' + countdown + (rank >= 10 ? ' · 已达十品' : '') + '</div></div>';
+    };
     if (show === 'lingmai') {
       const lv = g.manor.lingmai || 0;
       const rank = lv <= 2 ? '黄' : lv <= 4 ? '玄' : lv <= 6 ? '地' : '天';
@@ -471,13 +484,15 @@
           '<div class="dim mt8">炼丹阁等级 Lv.' + (g.manor.lianlv || 1) + ' · 锻造阁等级 Lv.' + (g.manor.duanlv || 1) + '</div>' +
           '<div class="dim mt8">普通集市可购买 1品炼丹炉(玄铁丹炉)/1品锻造炉(黑铁锻炉) 提升相应等级。</div></div>';
       } else if (qs === 'qkdan') {
-        html += '<div class="card"><div class="row"><div><b class="gold">炼丹阁 Lv.' + (g.manor.lianlv || 1) + '</b></div></div><div class="dim">炼制渡劫丹、聚元丹等。</div></div>';
+        html += trainCard('lian');
+        html += '<div class="card"><div class="row"><div><b class="gold">炼丹阁</b></div></div><div class="dim">炼制渡劫丹、聚元丹等。</div></div>';
         ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {
           const cost = { 渡劫丹: 80, 聚元丹: 30, 聚灵丹: 20, 回春丹: 15 }[dn];
           html += '<div class="shop-item"><span>' + dn + ' <span class="dim">(持有 ' + (g.items[dn] || 0) + ')</span></span><span><span class="price">灵气' + cost + '</span><button class="btn btn-sm btn-blue" data-act="alc" data-a="' + dn + '">炼制</button></span></div>';
         });
       } else {
-        html += '<div class="card"><div class="row"><div><b class="gold">锻造阁 Lv.' + (g.manor.duanlv || 1) + '</b></div></div><div class="dim">消耗灵气打造装备。</div></div>';
+        html += trainCard('duan');
+        html += '<div class="card"><div class="row"><div><b class="gold">锻造阁</b></div></div><div class="dim">消耗灵气打造装备。</div></div>';
         const cost = 40 + g.manor.qiankun * 15;
         html += '<div class="shop-item"><span>打造一件装备（当前灵气消耗 ' + cost + '）</span><button class="btn btn-sm btn-gold" data-act="forge">打造</button></div>';
       }
@@ -490,6 +505,7 @@
     v.innerHTML = html;
   }
   function colorName(c) { return { blue: '蓝', purple: '紫', gold: '金', red: '红' }[c] || c; }
+  function pinName(r) { return ['', '一品', '二品', '三品', '四品', '五品', '六品', '七品', '八品', '九品', '十品'][r] || r; }
   function costText(cost) {
     const a = [];
     if (cost.copper) a.push('铜钱' + F(cost.copper));
@@ -1020,6 +1036,7 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
     },
     'msub': function (a) { S.manorSub = a; render(); },
     'qksub': function (a) { S.qiankunSub = a; render(); },
+    'train': function (a, b) { const r = C.startTrain(S.game, a, +b); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'wxadd': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { toast('上阵中的道友请先下阵，才能放入万象化宇'); return; }
