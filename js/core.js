@@ -153,6 +153,7 @@
     });
     state.formation = state.formation || [];
     if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
+    (state.equipment || []).forEach(e => { if (e.slot === 'boots' || e.slot === 'treasure') { e.slot = e.slot === 'boots' ? 'necklace' : 'necklace'; } });
     return state;
   }
 
@@ -443,6 +444,17 @@
     addItem(state, '强化石', 2 + q);
     addItem(state, '精炼石', q >= 2 ? q : 0);
     return e;
+  }
+  function sellEquip(state, iid) {
+    const idx = state.equipment.findIndex(e => e.iid === iid);
+    if (idx < 0) return { ok:false, msg:'装备不存在' };
+    const e = state.equipment[idx];
+    if (state.equipped[iid]) return { ok:false, msg:'请先卸下再出售' };
+    state.equipment.splice(idx, 1);
+    const q = QMAP[e.quality];
+    const price = (40 + q * 60 + e.enh * 5 + e.ref * 20 + e.fumo * 15);
+    state.res.copper += price;
+    return { ok:true, copper: price, msg:'出售 ' + slotName(e.slot) + '·' + e.quality + ' 获得铜钱+' + price };
   }
 
   function addItem(state, name, n) { state.items[name] = (state.items[name] || 0) + (n || 1); }
@@ -1337,7 +1349,7 @@
     partnerTribulate, partnerLayerCost,
     upgradeManor, manorCost, hasCost, payCost,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
-    enhanceEquip, refineEquip, fumoEquip, equipTo, unequip,
+    enhanceEquip, refineEquip, fumoEquip, equipTo, unequip, sellEquip,
     craftFabao, equipFabao, fabaoBonus,
     buyShop, grantShopGood, useItem,
     challengeShuiyue, challengeWuxing, dailySweep, resetDaily, wuxingStage, shuiyueStage,
