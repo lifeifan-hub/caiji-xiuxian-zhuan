@@ -1414,8 +1414,10 @@ code.num { font-family: Consolas, monospace; }
     return { ok:true, msg:'开始升级，倒计时 ' + formatDuration(buildTimerDuration(target)) };
   }
   function buildTimerDuration(target) {
-    const m = [60, 1800, 3600, 7200, 14400, 28800]; // 1分/30分/1时/2时/4时/8时
-    return m[Math.min(target, 6) - 1] || 28800;
+    // 升到2级=60秒, 3级=1800秒, 4级=7200秒, 5级=14400, 6级=28800, 7级=57600, 以后每级×2
+    if (target <= 2) return 60;
+    if (target === 3) return 1800;
+    return 7200 * Math.pow(2, target - 4);
   }
   function checkBuildTimers(state) {
     const now = Date.now();
