@@ -508,7 +508,7 @@
 
   // ---------- 装备配置 ----------
   function equipSlots() { return ['weapon', 'armor', 'accessory', 'necklace']; }
-  function equipStatName(slot) { return { atk: '攻击', def: '物防', hp: '生命', spd: '速度' }[DATA.SLOT_STAT[slot]] || '属性'; }
+  function equipStatName(slot) { return { weapon: '攻击', armor: '物防', accessory: '生命', necklace: '法防' }[slot] || '属性'; }
   function equipStatVal(e) { const q = DATA.QMAP[e.quality]; return Math.round(e.baseValue * [1, 1.4, 2, 3, 4.5, 7][q] * (1 + e.enh * 0.06 + e.ref * 0.09)); }
   function equipOn(g, key) { return g.equipment.find(x => x.iid && g.equipped[x.iid] === key); }
   function equipConfigHtml(g) {
