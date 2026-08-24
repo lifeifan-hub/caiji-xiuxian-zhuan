@@ -663,7 +663,7 @@
   // ---------- 仙府 ----------
   function manorCost(building, lv) {
     if (building === 'qiankun') return { lingqi: Math.round(25 * lv + 20) };
-    return { qiongjiang: Math.round(5 + lv * 6) }; // 琼浆玉液升级（温和曲线）
+    return { qiongjiang: Math.round(400 * Math.pow(1.65, lv)) }; // 琼浆玉液升级（长期曲线，约半年满级）
   }
   function hasCost(state, cost) {
     if (!cost) return true;
@@ -690,7 +690,7 @@
       recomputeStats(state);
       return { ok:true, msg:'造化乾坤殿升级成功' };
     }
-    const maxLv = (building === 'lingmai') ? 9 : 99;
+    const maxLv = (building === 'lingmai') ? 9 : 20;
     if (building === 'gongfa' && !state.gongfaLearned) return { ok:false, msg:'需先购买并学习功法' };
     if (lv >= maxLv) return { ok:false, msg:'已满级' };
     if (state.buildTimers[building]) return { ok:false, msg:'升级进行中，请等待倒计时结束' };
