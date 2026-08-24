@@ -2700,7 +2700,7 @@ code.num { font-family: Consolas, monospace; }
         const owner = g.equipped[e.iid];
         let whoTxt = '';
         if (owner === key) whoTxt = '<span class="green"> 已穿</span>';
-        else if (owner) whoTxt = '<span class="dim"> 穿于 ' + (owner === 'hero' ? (g.heroName || '主角') : (DATA.PARTNERS.find(x => x.iid === owner) || {}).name || '') + '</span>';
+        else if (owner) { const op = g.partners.find(x => x.iid === owner); whoTxt = '<span class="dim"> 穿于 ' + (owner === 'hero' ? (g.heroName || '主角') : (op ? (DATA.PARTNERS.find(x => x.id === op.pid) || {}).name || '' : '')) + '</span>'; }
         changeHtml += '<div class="eq-change-item" data-emwear="' + e.iid + '" style="color:' + qColor(q) + '">' + sl.name + '·' + e.quality + ' ' + equipStatName(slot) + '+' + equipStatVal(e) + whoTxt + '</div>';
       });
       changeHtml += '</div>';
@@ -3165,7 +3165,8 @@ code.num { font-family: Consolas, monospace; }
       const g = S.game, key = S.selUnit || 'hero';
       const owner = g.equipped[a];
       if (owner && owner !== key) {
-        const oname = (owner === 'hero') ? (g.heroName || '主角') : ((g.partners.find(x => x.iid === owner) || {}).name || '');
+        const ownerP = g.partners.find(x => x.iid === owner);
+        const oname = (owner === 'hero') ? (g.heroName || '主角') : (ownerP ? (DATA.PARTNERS.find(x => x.id === ownerP.pid) || {}).name || '' : '');
         if (!confirm('该装备目前由「' + oname + '」穿戴，确定换给当前单位吗？')) return;
       }
       C.equipTo(g, a, key); C.recomputeStats(g); C.save(g); S.eqChange = false; render(); renderEquipModal();
