@@ -671,7 +671,9 @@ code.num { font-family: Consolas, monospace; }
       goods: [
         { id: 'qianghua', item: '强化石', price: 50000, qty: 1, limit: 0 },
         { id: 'jinglian', item: '精炼石', price: 50000, qty: 1, limit: 0 },
-        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 }
+        { id: 'fuomo', item: '附魔石', price: 50000, qty: 1, limit: 0 },
+        { id: 'danlu1', item: '1品炼丹炉·玄铁丹炉', price: 120000, qty: 1, limit: 0 },
+        { id: 'duanlu1', item: '1品锻造炉·黑铁锻炉', price: 120000, qty: 1, limit: 0 }
       ]
     },
     purple: {
@@ -685,7 +687,9 @@ code.num { font-family: Consolas, monospace; }
     },
     gongfa: {
       name: '功法商店', currency: 'qiongjiang',
-      goods: []
+      goods: [
+        { id: 'gf', item: '功法·秘籍', price: 20, qty: 1, limit: 0 }
+      ]
     },
     fabao: {
       name: '法宝商店', currency: 'fabao',
@@ -695,13 +699,13 @@ code.num { font-family: Consolas, monospace; }
 
   // 仙府建筑
   const MANOR = {
-    zuiyue: { name: '醉月樽', res: '琼浆', desc: '产出琼浆玉液', baseHr: 1 },
-    lingmai: { name: '灵脉', res: '琼浆', desc: '主角核心：提升主角品质颜色', baseHr: 0 },
-    linggen: { name: '灵根', res: '灵气', desc: '全体攻防血百分比加成', baseHr: 4 },
-    fazhen: { name: '法阵', res: '修为', desc: '挂机修为产出提升', baseHr: 5 },
-    juling: { name: '聚灵阵', res: '修为', desc: '闲置道友按比例加成全队', baseHr: 0 },
-    gongfa: { name: '功法', res: '修为', desc: '研习主角主动被动功法', baseHr: 0 },
-    qiankun: { name: '造化乾坤殿', res: '灵气', desc: '丹房炼丹 + 器宝炼器', baseHr: 0 }
+    lingmai: { name: '灵脉', res: '琼浆', desc: '提升主角品质(黄→玄→地→天)', baseHr: 0 },
+    gongfa: { name: '功法', res: '琼浆', desc: '升级已学习的功法(需先购买并在物品中使用)', baseHr: 0 },
+    linggen: { name: '灵根', res: '灵气', desc: '产出灵气 + 主角百分比加成', baseHr: 4 },
+    wanxiang: { name: '万象化宇', res: '琼浆', desc: '放入多余伙伴，提升上阵伙伴属性', baseHr: 0 },
+    juling: { name: '聚灵阵', res: '修为', desc: '产出修为，等级越高越多', baseHr: 5 },
+    qiankun: { name: '造化乾坤殿', res: '灵气', desc: '升级 / 炼丹阁 / 锻造阁', baseHr: 0 },
+    zuiyue: { name: '醉月樽', res: '琼浆', desc: '产出琼浆玉液，等级越高越多', baseHr: 1 }
   };
 
   CJ.P = {
@@ -778,7 +782,9 @@ code.num { font-family: Consolas, monospace; }
       equipped: {},  // instId -> unitRefKey('hero' | partnerInstId)
       fabao: [],     // {id, count}
       equippedFabao: [], // id 列表，最多3
-      manor: { zuiyue: 1, lingmai: 0, linggen: 1, fazhen: 1, juling: 0, gongfa: 0, qiankun: 1 },
+      manor: { zuiyue: 1, lingmai: 0, linggen: 1, wanxiang: 1, juling: 1, gongfa: 0, qiankun: 1, lianlv: 1, duanlv: 1 },
+      buildTimers: {},
+      wanxiang: [],
       gongfa: 0,      // 已研习功法层数
       skills: ['basic'], // 主角已掌握技能 id
       mainline: { stage: 1, cleared: 0 },
@@ -847,7 +853,9 @@ code.num { font-family: Consolas, monospace; }
     try {
       if (typeof localStorage === 'undefined') return null;
       const raw = localStorage.getItem(SAVE_KEY);
-      return raw ? normalizeState(JSON.parse(raw)) : null;
+      const st = raw ? normalizeState(JSON.parse(raw)) : null;
+      if (st) checkBuildTimers(st);
+      return st;
     } catch (e) { return null; }
   }
   function wipe() {
@@ -882,6 +890,12 @@ code.num { font-family: Consolas, monospace; }
     });
     if (state.freeSummonAt == null) state.freeSummonAt = 0;
     if (state.vip == null) state.vip = 0;
+    state.manor = state.manor || {};
+    if (state.manor.wanxiang == null) state.manor.wanxiang = 1;
+    if (state.manor.lianlv == null) state.manor.lianlv = 1;
+    if (state.manor.duanlv == null) state.manor.duanlv = 1;
+    if (state.buildTimers == null) state.buildTimers = {};
+    if (state.wanxiang == null) state.wanxiang = [];
     return state;
   }
 
@@ -893,18 +907,19 @@ code.num { font-family: Consolas, monospace; }
 
   // ---------- 团队战力计算 ----------
   function qualityMult(q) { return { 2: 1.0, 3: 1.7, 4: 2.9, 5: 5.2 }[q]; }
+  // 灵脉共9级：1-2黄(蓝) 3-4玄(紫) 5-6地(金) 7-9天(红)
   function lingmaiMult(lv) {
-    // 灵脉: 蓝1 -> 紫1.3 -> 金1.7 -> 红2.2
-    if (lv >= 15) return 2.2;
-    if (lv >= 10) return 1.7;
-    if (lv >= 5) return 1.3;
-    return 1.0;
+    if (lv <= 0) return 1.0;
+    if (lv <= 2) return 1.15;
+    if (lv <= 4) return 1.45;
+    if (lv <= 6) return 1.85;
+    return 2.5 + (lv - 7) * 0.35;
   }
   function lingmaiColor(lv) {
-    if (lv >= 15) return 'red';
-    if (lv >= 10) return 'gold';
-    if (lv >= 5) return 'purple';
-    return 'blue';
+    if (lv <= 2) return 'blue';
+    if (lv <= 4) return 'purple';
+    if (lv <= 6) return 'gold';
+    return 'red';
   }
 
   // 渡劫成长倍率：每成功渡劫一层小境界 +5%；破大境界按 境界倍率 跳升（提升更高）
@@ -971,6 +986,12 @@ code.num { font-family: Consolas, monospace; }
         role: tpl.role,
         element: tpl.el
       };
+      // 万象化宇：上阵伙伴额外加成
+      if (s.formation.includes(key)) {
+        const wx = wanxiangBonus(s);
+        const wm = 1 + wx.pct / 100;
+        extra.atk *= wm; extra.hp *= wm; extra.def *= wm;
+      }
     }
     if (key === 'hero') {
       const race = P.RACE[s.race];
@@ -1083,19 +1104,18 @@ code.num { font-family: Consolas, monospace; }
   }
   function rates(state) {
     const realmMult = REALMS[state.realm.idx].mult;
-    const fazhen = state.manor.fazhen;
+    const juling = state.manor.juling || 1;
     const gongfa = state.gongfa;
     const stage = state.mainline.stage;
-    // 修为/秒：随法阵、境界、关卡
+    // 修为/秒：随聚灵阵、境界、关卡
     const xiuwei = Math.round(
-      realmMult * (1 + fazhen * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9 * vipMult(state)
+      realmMult * (1 + juling * 0.25) * (1 + stage * 0.03) * (1 + gongfa * 0.1) * 0.9 * vipMult(state)
     );
     const copper = Math.round(
       (3 + realmMult * 0.4 + stage * 0.5) * vipMult(state)
     );
-    const qiongjiang = zuiyueJarsUnlocked(state); // 每樽 1/秒
-    const linggen = state.manor.linggen;
-    const lingqi = (1 + linggen * 1.2) / 60; // /秒
+    const qiongjiang = (0.3 + (state.manor.zuiyue || 1) * 0.35); // 醉月樽产玉液
+    const lingqi = (1 + (state.manor.linggen || 1) * 1.2) / 60; // 灵根产灵气
     return { xiuwei, copper, qiongjiang, lingqi };
   }
 
@@ -1115,6 +1135,7 @@ code.num { font-family: Consolas, monospace; }
   function tick(state, now) {
     const elapsed = clamp((now - state.lastTick) / 1000, 0, 3600); // 在线最多按1小时结算，离线单独算
     applyGain(state, elapsed);
+    checkBuildTimers(state);
     state.lastTick = now;
     recomputeStats(state);
     return state;
@@ -1354,15 +1375,8 @@ code.num { font-family: Consolas, monospace; }
 
   // ---------- 仙府 ----------
   function manorCost(building, lv) {
-    switch (building) {
-      case 'zuiyue': return { copper: Math.round(120 * Math.pow(2, lv)), qiongjiang: 0, lingqi: 0 };
-      case 'lingmai': return { copper: 0, qiongjiang: Math.round(20 * Math.pow(2.1, lv)), lingqi: 0 };
-      case 'linggen': return { copper: 0, qiongjiang: 0, lingqi: Math.round(30 * Math.pow(2, lv)) };
-      case 'fazhen': return { copper: Math.round(80 * Math.pow(1.8, lv)), qiongjiang: 0, lingqi: Math.round(10 * lv) };
-      case 'juling': return { copper: Math.round(200 * Math.pow(2, lv)), lingqi: Math.round(20 * lv) };
-      case 'gongfa': return { xiuwei: Math.round(500 * Math.pow(2.2, lv)), lingqi: Math.round(15 * lv) };
-      case 'qiankun': return { copper: Math.round(150 * Math.pow(1.9, lv)), lingqi: Math.round(25 * lv) };
-    }
+    if (building === 'qiankun') return { lingqi: Math.round(25 * lv + 20) };
+    return { qiongjiang: Math.round(10 * Math.pow(2.2, lv)) }; // 琼浆玉液升级
   }
   function hasCost(state, cost) {
     if (!cost) return true;
@@ -1382,13 +1396,41 @@ code.num { font-family: Consolas, monospace; }
   }
   function upgradeManor(state, building) {
     const lv = state.manor[building];
-    if (building === 'zuiyue') return { ok:false, msg:'醉月樽随境界自动解锁，无需升级' };
-    if (building === 'gongfa' && lv >= P.GONGFAS[state.race].length) return { ok:false, msg:'功法已研习完毕' };
+    if (building === 'qiankun') {
+      const cost = manorCost(building, lv);
+      if (!payCost(state, cost)) return { ok:false, msg:'灵气不足' };
+      state.manor.qiankun++;
+      recomputeStats(state);
+      return { ok:true, msg:'造化乾坤殿升级成功' };
+    }
+    const maxLv = (building === 'lingmai') ? 9 : 99;
+    if (building === 'gongfa' && !state.gongfaLearned) return { ok:false, msg:'需先购买并学习功法' };
+    if (lv >= maxLv) return { ok:false, msg:'已满级' };
+    if (state.buildTimers[building]) return { ok:false, msg:'升级进行中，请等待倒计时结束' };
     const cost = manorCost(building, lv);
-    if (!payCost(state, cost)) return { ok:false, msg:'资源不足' };
-    state.manor[building]++;
+    if (!payCost(state, cost)) return { ok:false, msg:'琼浆玉液不足' };
+    const target = lv + 1;
+    state.buildTimers[building] = { endAt: Date.now() + buildTimerDuration(target), target };
     recomputeStats(state);
-    return { ok:true, msg:'升级成功' };
+    return { ok:true, msg:'开始升级，倒计时 ' + formatDuration(buildTimerDuration(target)) };
+  }
+  function buildTimerDuration(target) {
+    const m = [60, 1800, 3600, 7200, 14400, 28800]; // 1分/30分/1时/2时/4时/8时
+    return m[Math.min(target, 6) - 1] || 28800;
+  }
+  function checkBuildTimers(state) {
+    const now = Date.now();
+    Object.keys(state.buildTimers).forEach(b => {
+      const t = state.buildTimers[b];
+      if (now >= t.endAt) { if (state.manor[b] != null) state.manor[b] = t.target; delete state.buildTimers[b]; recomputeStats(state); }
+    });
+  }
+  function wanxiangBonus(state) {
+    const lv = state.manor.wanxiang || 1;
+    const slots = Math.min(12, 1 + Math.floor(lv));
+    const cnt = Math.min(slots, (state.wanxiang || []).length);
+    const pct = cnt * (1.5 + lv * 0.5);
+    return { slots, cnt, pct };
   }
 
   // ---------- 炼丹 (造化乾坤殿 - 丹房) ----------
@@ -2058,6 +2100,9 @@ code.num { font-family: Consolas, monospace; }
     if (name === '聚元丹') { const r = rates(state); const g = r.xiuwei * 3600; state.res.xiuwei += g; return { ok:true, msg:'修为 +' + fmt(g) }; }
     if (name === '聚灵丹') { state.res.lingqi += 500; return { ok:true, msg:'灵气 +500' }; }
     if (name === '渡劫丹') return { ok:true, msg:'渡劫丹留待渡劫使用' };
+    if (name === '功法·秘籍') { state.gongfaLearned = true; if ((state.manor.gongfa || 0) < 1) state.manor.gongfa = 1; return { ok:true, msg:'已学习功法，可在仙府·功法中用琼浆玉液升级' }; }
+    if (name === '1品炼丹炉·玄铁丹炉') { state.manor.lianlv = Math.min(9, (state.manor.lianlv || 1) + 1); return { ok:true, msg:'炼丹阁等级提升，可炼更高丹药' }; }
+    if (name === '1品锻造炉·黑铁锻炉') { state.manor.duanlv = Math.min(9, (state.manor.duanlv || 1) + 1); return { ok:true, msg:'锻造阁等级提升，可铸更高装备' }; }
     return { ok:false, msg:'暂不可用' };
   }
 
@@ -2117,6 +2162,7 @@ code.num { font-family: Consolas, monospace; }
     summon, summonOne,
     partnerTribulate, partnerLayerCost, dismissPartner,
     upgradeManor, manorCost, hasCost, payCost,
+    checkBuildTimers, wanxiangBonus, buildTimerDuration,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
     enhanceEquip, refineEquip, fumoEquip, equipTo, unequip, sellEquip,
     craftFabao, equipFabao, fabaoBonus,
@@ -2152,7 +2198,7 @@ code.num { font-family: Consolas, monospace; }
 
   const S = {
     game: null, tab: 'main', race: null, elem: null,
-    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false,
+    slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'lingmai', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false, qiankunSub: 'qkup',
     eqFilter: '', eqSel: {}, equipModal: null, formMode: false, swapFrom: null, cancelBattle: false, battleMode: '',
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
@@ -2542,65 +2588,85 @@ code.num { font-family: Consolas, monospace; }
   function renderManor(v) {
     const g = S.game;
     const MANOR = DATA.MANOR;
-    const show = S.manorSub;
-    let html = '<div class="sec-title">仙府·资源根基</div>';
-    html += '<div class="sec-tabs">' +
-      '<button class="btn ' + (show === 'build' ? 'btn-gold' : '') + '" data-act="msub" data-a="build">建筑</button>' +
-      '<button class="btn ' + (show === 'gongfa' ? 'btn-gold' : '') + '" data-act="msub" data-a="gongfa">功法</button>' +
-      '<button class="btn ' + (show === 'dan' ? 'btn-gold' : '') + '" data-act="msub" data-a="dan">丹房</button>' +
-      '<button class="btn ' + (show === 'qi' ? 'btn-gold' : '') + '" data-act="msub" data-a="qi">器宝</button>' +
-      '</div>';
-
-    if (show === 'build') {
-      // 醉月樽：8 樽按境界解锁（炼气→大乘），每樽 60 玉液/分钟
-      const jars = C.zuiyueJarsUnlocked(g);
-      let jarHtml = '';
-      for (let i = 0; i < 8; i++) {
-        const nm = DATA.REALMS[i].name;
-        const on = i < jars;
-        jarHtml += '<div class="zjar' + (on ? ' on' : '') + '"><span class="zj-ico">樽</span><span>' + nm + '樽</span>' + (on ? '<b class="green">已解锁</b>' : '<small class="dim">需' + nm + '</small>') + '</div>';
-      }
-      html += '<div class="card"><div class="row"><div><b class="gold">樽 醉月樽</b> <span class="tag">' + jars + '/8</span></div><span class="green">' + jars + ' 玉液/秒 · ' + (jars * 60) + '/分</span></div>' +
-        '<div class="zjar-grid">' + jarHtml + '</div>' +
-        '<div class="dim mt8">每樽对应一个境界（炼气→大乘），达到对应境界自动解锁；每樽产 60 琼浆玉液/分钟。渡劫期不再增添。</div></div>';
-      const icons = { lingmai: '脉', linggen: '根', fazhen: '阵', juling: '聚', gongfa: '功', qiankun: '殿' };
-      ['lingmai', 'linggen', 'fazhen', 'juling', 'gongfa', 'qiankun'].forEach(bid => {
-        const b = MANOR[bid];
-        const lv = g.manor[bid];
-        const cost = C.manorCost(bid, lv);
-        let eff = '';
-        if (bid === 'lingmai') eff = '主角品质：' + colorName(C.lingmaiColor(lv)) + '（' + C.lingmaiMult(lv).toFixed(1) + 'x）';
-        if (bid === 'linggen') eff = '全体攻击/防御/生命 +' + (lv * 3) + '%';
-        if (bid === 'fazhen') eff = '修为产出 x' + (1 + lv * 0.25).toFixed(2);
-        if (bid === 'juling') eff = '闲置道友加成：全队+' + C.julingBonus(g).toFixed(1) + '%';
-        if (bid === 'gongfa') eff = '研习功法：主角攻击+' + (lv * 1.2).toFixed(1) + '% 速度+' + lv;
-        if (bid === 'qiankun') eff = '炼丹炼器等级 +' + lv + '，解锁更高阶';
-        const costStr = costText(cost);
-        html += '<div class="card"><div class="row"><div><b class="gold">' + icons[bid] + ' ' + b.name + '</b> <span class="tag">Lv.' + lv + '</span></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="' + bid + '">升级</button></div>' +
-          '<div class="dim mt8">' + b.desc + '</div><div class="green mt8">' + eff + '</div><div class="dim">升级消耗：' + costStr + '</div></div>';
-      });
+    const show = S.manorSub || 'lingmai';
+    let html = '<div class="sec-title">仙府·七大玩法</div>';
+    html += '<div class="sec-tabs">';
+    [['lingmai', '灵脉'], ['gongfa', '功法'], ['linggen', '灵根'], ['wanxiang', '万象化宇'], ['juling', '聚灵阵'], ['qiankun', '造化乾坤殿'], ['zuiyue', '醉月樽']].forEach(t => {
+      html += '<button class="btn ' + (show === t[0] ? 'btn-gold' : '') + '" data-act="msub" data-a="' + t[0] + '">' + t[1] + '</button>';
+    });
+    html += '</div>';
+    const timerOf = (bid) => g.buildTimers[bid] ? '<span class="green">升级中·还差 ' + C.formatDuration(Math.max(0, (g.buildTimers[bid].endAt - Date.now()) / 1000)) + '</span>' : '';
+    const upBtn = (bid, label) => {
+      const lv = g.manor[bid] || 0;
+      const tm = timerOf(bid);
+      const maxLv = (bid === 'lingmai') ? 9 : 99;
+      const dis = (tm || lv >= maxLv) ? ' disabled' : '';
+      return '<button class="btn btn-sm btn-gold" data-act="mup" data-a="' + bid + '"' + dis + '>' + label + '（玉液' + F((C.manorCost(bid, lv).qiongjiang || 0)) + '）</button> ' + tm + (lv >= maxLv && !tm ? '<span class="dim">已满级</span>' : '');
+    };
+    if (show === 'lingmai') {
+      const lv = g.manor.lingmai || 0;
+      const rank = lv <= 2 ? '黄' : lv <= 4 ? '玄' : lv <= 6 ? '地' : '天';
+      html += '<div class="card"><div class="row"><div><b class="gold">灵脉</b> <span class="tag">Lv.' + lv + '/9 · ' + rank + '阶</span></div>' + upBtn('lingmai', '升级') + '</div>' +
+        '<div class="green mt8">主角品质：<b style="color:' + qColor({ blue: 2, purple: 3, gold: 4, red: 5 }[C.lingmaiColor(lv)] || '#fff') + '">' + colorName(C.lingmaiColor(lv)) + '</b> · ' + C.lingmaiMult(lv).toFixed(2) + 'x</div>' +
+        '<div class="dim mt8">黄阶1-2=蓝 · 玄阶3-4=紫 · 地阶5-6=金 · 天阶7-9=红</div></div>';
     } else if (show === 'gongfa') {
       const rc = DATA.RACE[g.race];
       const ult = DATA.SKILLS[rc.uid];
-      html += '<div class="card"><div class="row"><div><b class="gold">功法研习</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="gongfa">研习（消耗修为）</button></div>' +
-        '<div class="dim mt8">研习功法提升主角 攻击/速度（当前 Lv.' + g.gongfa + ' → 攻击+' + (g.gongfa * 1.2).toFixed(1) + '% · 速度+' + g.gongfa + '）</div>' +
-        '<div class="row mt8"><span><b class="gold">种族专属·' + ult.name + '</b></span><span class="green">天生掌握</span></div>' +
-        '<div class="dim">' + rc.ultimate.text + '</div>' +
-        '<div class="row mt8"><span><b class="gold">种族普通·' + rc.normal.name + '</b></span><span class="dim">' + rc.normal.text + '</span></div></div>';
-    } else if (show === 'dan') {
-      html += '<div class="card"><div class="row"><div><b class="gold">丹房·造化乾坤殿 (Lv.' + g.manor.qiankun + ')</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级乾坤殿</button></div><div class="dim mt8">炼制渡劫丹、聚元丹等，渡劫丹是渡劫关键。</div></div>';
-      ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {
-        const cost = { 渡劫丹: 80, 聚元丹: 30, 聚灵丹: 20, 回春丹: 15 }[dn];
-        html += '<div class="shop-item"><span>' + dn + ' <span class="dim">(持有 ' + (g.items[dn] || 0) + ')</span></span><span><span class="price">灵气' + cost + '</span> <button class="btn btn-sm btn-blue" data-act="alc" data-a="' + dn + '">炼制</button></span></div>';
+      const lv = g.gongfa || 0;
+      if (!g.gongfaLearned) {
+        html += '<div class="card"><div class="dim">未学习功法。请到「仙宝阁→功法商店」购买【功法·秘籍】，再到「次元空间→物品」使用后即可升级。</div>' +
+          '<div class="row mt8"><span><b class="gold">种族专属·' + ult.name + '</b></span><span class="green">天生掌握</span></div>' +
+          '<div class="dim">' + rc.ultimate.text + '</div></div>';
+      } else {
+        html += '<div class="card"><div class="row"><div><b class="gold">功法</b> <span class="tag">Lv.' + lv + '</span></div>' + upBtn('gongfa', '升级') + '</div>' +
+          '<div class="green mt8">主角 攻击+' + (lv * 1.2).toFixed(1) + '% · 速度+' + lv + '</div>' +
+          '<div class="row mt8"><span><b class="gold">种族专属·' + ult.name + '</b></span><span class="green">天生掌握</span></div>' +
+          '<div class="dim">' + rc.ultimate.text + '</div></div>';
+      }
+    } else if (show === 'linggen') {
+      const lv = g.manor.linggen || 1;
+      html += '<div class="card"><div class="row"><div><b class="gold">灵根</b> <span class="tag">Lv.' + lv + '</span></div>' + upBtn('linggen', '升级') + '</div>' +
+        '<div class="green mt8">主角属性加成 +' + (lv * 3) + '% · 产出灵气 ' + ((1 + lv * 1.2) / 60).toFixed(2) + '/秒</div></div>';
+    } else if (show === 'wanxiang') {
+      const wx = C.wanxiangBonus(g);
+      html += '<div class="card"><div class="row"><div><b class="gold">万象化宇</b> <span class="tag">Lv.' + (g.manor.wanxiang || 1) + '</span></div>' + upBtn('wanxiang', '升级') + '</div>' +
+        '<div class="green mt8">已驻 ' + wx.cnt + '/' + wx.slots + ' · 上阵伙伴属性 +' + wx.pct.toFixed(1) + '%</div>' +
+        '<div class="dim mt8">道友列表：</div>';
+      g.partners.forEach(p => {
+        const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+        const inWx = g.wanxiang.includes(p.iid);
+        const inF = g.formation.includes(p.iid);
+        html += '<div class="shop-item"><span style="color:' + qColor(tpl.q) + '">' + tpl.name + (inF ? ' <span class="dim">(上阵)</span>' : '') + '</span><span>' + (inWx ? '<button class="btn btn-sm btn-red" data-act="wxrm" data-a="' + p.iid + '">移出万象</button>' : '<button class="btn btn-sm btn-blue" data-act="wxadd" data-a="' + p.iid + '">放入万象</button>') + '</span></div>';
       });
-      html += '<div class="sec-title" style="margin:12px 0 4px">背包道具</div>';
-      ['聚元丹', '聚灵丹'].forEach(dn => {
-        if ((g.items[dn] || 0) > 0) html += '<div class="shop-item"><span>' + dn + ' ×' + g.items[dn] + '</span><button class="btn btn-sm btn-blue" data-act="use" data-a="' + dn + '">使用</button></div>';
-      });
-    } else if (show === 'qi') {
-      html += '<div class="card"><div class="row"><div><b class="gold">器宝·造化乾坤殿 (Lv.' + g.manor.qiankun + ')</b></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级乾坤殿</button></div><div class="dim mt8">消耗灵气锻造装备，乾坤殿等级越高品阶越高。</div></div>';
-      const cost = 40 + g.manor.qiankun * 15;
-      html += '<div class="shop-item"><span>锻造一件装备（当前灵气消耗 ' + cost + '）</span><button class="btn btn-sm btn-gold" data-act="forge">锻造</button></div>';
+    } else if (show === 'juling') {
+      const lv = g.manor.juling || 1;
+      const r = C.rates(g);
+      html += '<div class="card"><div class="row"><div><b class="gold">聚灵阵</b> <span class="tag">Lv.' + lv + '</span></div>' + upBtn('juling', '升级') + '</div>' +
+        '<div class="green mt8">产出修为 ' + r.xiuwei + '/秒</div></div>';
+    } else if (show === 'qiankun') {
+      const qs = S.qiankunSub || 'qkup';
+      html += '<div class="sec-tabs"><button class="btn ' + (qs === 'qkup' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkup">升级</button><button class="btn ' + (qs === 'qkdan' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkdan">炼丹阁</button><button class="btn ' + (qs === 'qkfor' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkfor">锻造阁</button></div>';
+      const lv = g.manor.qiankun || 1;
+      if (qs === 'qkup') {
+        html += '<div class="card"><div class="row"><div><b class="gold">造化乾坤殿</b> <span class="tag">Lv.' + lv + '</span></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级（灵气' + F((C.manorCost('qiankun', lv).lingqi || 0)) + '）</button></div>' +
+          '<div class="dim mt8">炼丹阁等级 Lv.' + (g.manor.lianlv || 1) + ' · 锻造阁等级 Lv.' + (g.manor.duanlv || 1) + '</div>' +
+          '<div class="dim mt8">普通集市可购买 1品炼丹炉(玄铁丹炉)/1品锻造炉(黑铁锻炉) 提升相应等级。</div></div>';
+      } else if (qs === 'qkdan') {
+        html += '<div class="card"><div class="row"><div><b class="gold">炼丹阁 Lv.' + (g.manor.lianlv || 1) + '</b></div></div><div class="dim">炼制渡劫丹、聚元丹等。</div></div>';
+        ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {
+          const cost = { 渡劫丹: 80, 聚元丹: 30, 聚灵丹: 20, 回春丹: 15 }[dn];
+          html += '<div class="shop-item"><span>' + dn + ' <span class="dim">(持有 ' + (g.items[dn] || 0) + ')</span></span><span><span class="price">灵气' + cost + '</span><button class="btn btn-sm btn-blue" data-act="alc" data-a="' + dn + '">炼制</button></span></div>';
+        });
+      } else {
+        html += '<div class="card"><div class="row"><div><b class="gold">锻造阁 Lv.' + (g.manor.duanlv || 1) + '</b></div></div><div class="dim">消耗灵气打造装备。</div></div>';
+        const cost = 40 + g.manor.qiankun * 15;
+        html += '<div class="shop-item"><span>打造一件装备（当前灵气消耗 ' + cost + '）</span><button class="btn btn-sm btn-gold" data-act="forge">打造</button></div>';
+      }
+    } else if (show === 'zuiyue') {
+      const lv = g.manor.zuiyue || 1;
+      const r = C.rates(g);
+      html += '<div class="card"><div class="row"><div><b class="gold">醉月樽</b> <span class="tag">Lv.' + lv + '</span></div>' + upBtn('zuiyue', '升级') + '</div>' +
+        '<div class="green mt8">产出琼浆玉液 ' + r.qiongjiang.toFixed(2) + '/秒</div></div>';
     }
     v.innerHTML = html;
   }
@@ -2767,7 +2833,7 @@ code.num { font-family: Consolas, monospace; }
     const keys = Object.keys(g.items).filter(k => (g.items[k] || 0) > 0);
     if (!keys.length) html += '<div class="dim mt8">暂无物品</div>';
     keys.forEach(k => {
-      const use = ['聚元丹', '聚灵丹'].includes(k) ? '<button class="btn btn-sm btn-green" data-act="use" data-a="' + k + '">使用</button>' : '';
+      const use = ['聚元丹', '聚灵丹', '功法·秘籍', '1品炼丹炉·玄铁丹炉', '1品锻造炉·黑铁锻炉'].includes(k) ? '<button class="btn btn-sm btn-green" data-act="use" data-a="' + k + '">使用</button>' : '';
       html += '<div class="shop-item"><span>' + k + '</span><span><b class="gold">×' + (g.items[k] || 0) + '</b> ' + use + '</span></div>';
     });
     html += '</div>';
@@ -3134,6 +3200,16 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
       render();
     },
     'msub': function (a) { S.manorSub = a; render(); },
+    'qksub': function (a) { S.qiankunSub = a; render(); },
+    'wxadd': function (a) {
+      const g = S.game;
+      if (g.formation.includes(a)) { toast('上阵中的道友请先下阵，才能放入万象化宇'); return; }
+      const wx = C.wanxiangBonus(g);
+      if (g.wanxiang.includes(a)) return;
+      if (g.wanxiang.length >= wx.slots) { toast('万象化宇已满，升级可加位置'); return; }
+      g.wanxiang.push(a); C.recomputeStats(g); C.save(g); render();
+    },
+    'wxrm': function (a) { const g = S.game; g.wanxiang = g.wanxiang.filter(x => x !== a); C.recomputeStats(g); C.save(g); render(); },
     'mup': function (a) { const r = C.upgradeManor(S.game, a); toast(r.msg); if (r.ok) { C.save(S.game); } render(); },
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
@@ -3152,11 +3228,12 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
     'fld': function (a) {
       const g = S.game;
       if (g.formation.includes(a)) { g.formation = g.formation.filter(x => x !== a); }
-      else {
-        if (g.formation.length >= 6) { toast('上阵已满（最多6位）'); return; }
-        if (a !== 'hero' && g.juling.includes(a)) g.juling = g.juling.filter(x => x !== a);
-        g.formation.push(a);
-      }
+else {
+if (g.formation.length >= 6) { toast('上阵已满（最多6位）'); return; }
+if (a !== 'hero' && g.juling.includes(a)) g.juling = g.juling.filter(x => x !== a);
+if (a !== 'hero' && g.wanxiang.includes(a)) g.wanxiang = g.wanxiang.filter(x => x !== a);
+g.formation.push(a);
+}
       C.recomputeStats(g); C.save(g); render();
     },
     'jld': function (a) {
