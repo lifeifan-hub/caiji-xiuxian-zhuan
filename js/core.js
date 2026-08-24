@@ -579,6 +579,19 @@
     state.res.xiuwei -= lost;
     return { ok: false, msg: '道友渡劫失败，损失本阶段所需修为的' + pct + '%（-' + fmt(lost) + '）' };
   }
+  function dismissPartner(state, iid) {
+    const idx = state.partners.findIndex(p => p.iid === iid);
+    if (idx < 0) return { ok: false, msg: '道友不存在' };
+    const p = state.partners[idx];
+    // 退回身上装备（取消穿戴，装备回到背包）
+    Object.keys(state.equipped).forEach(k => { if (state.equipped[k] === iid) delete state.equipped[k]; });
+    state.formation = state.formation.filter(x => x !== iid);
+    state.juling = state.juling.filter(x => x !== iid);
+    const name = partnerTpl(p.pid).name;
+    state.partners.splice(idx, 1);
+    recomputeStats(state);
+    return { ok: true, msg: '已遣散：' + name };
+  }
 
   function setFormation(state, ids) {
     // ids 为 instId，前=前排
@@ -1360,7 +1373,7 @@
     formationUnits, buildPlayerUnit, simulateBattle, enemyForStage, challengeMainline, stageReward,
     setFormation, setJuling, julingBonus,
     summon, summonOne,
-    partnerTribulate, partnerLayerCost,
+    partnerTribulate, partnerLayerCost, dismissPartner,
     upgradeManor, manorCost, hasCost, payCost,
     alchemy, forgeEquip, genEquip, qualityForStage, decomposeEquip,
     enhanceEquip, refineEquip, fumoEquip, equipTo, unequip, sellEquip,
