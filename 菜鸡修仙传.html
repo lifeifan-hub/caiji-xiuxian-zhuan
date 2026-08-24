@@ -1961,6 +1961,7 @@ code.num { font-family: Consolas, monospace; }
     if (state.codeUsed[code]) return { ok:false, msg:'该激活码已被使用过' };
     const RES = ['copper','xiuwei','ziqi','qiongjiang','lingqi','wuxing','fabao'];
     if (RES.indexOf(g) >= 0) state.res[g] = (state.res[g] || 0) + q;
+    else if (g === '红卡道友包' || g === '金卡道友包') { for (let i = 0; i < q; i++) grantShopGood(state, { item: g }); }
     else state.items[g] = (state.items[g] || 0) + q;
     state.codeUsed[code] = true;
     recomputeStats(state);
