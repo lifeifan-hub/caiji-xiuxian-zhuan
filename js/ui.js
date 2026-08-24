@@ -477,21 +477,18 @@
         '<div class="green mt8">产出修为 ' + r.xiuwei + '/秒</div></div>';
     } else if (show === 'qiankun') {
       const qs = S.qiankunSub || 'qkup';
-      html += '<div class="sec-tabs"><button class="btn ' + (qs === 'qkup' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkup">升级</button><button class="btn ' + (qs === 'qkdan' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkdan">炼丹阁</button><button class="btn ' + (qs === 'qkfor' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkfor">锻造阁</button></div>';
-      const lv = g.manor.qiankun || 1;
+      html += '<div class="sec-tabs"><button class="btn ' + (qs === 'qkup' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkup">造化乾坤殿</button><button class="btn ' + (qs === 'qkdan' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkdan">炼丹阁</button><button class="btn ' + (qs === 'qkfor' ? 'btn-gold' : '') + '" data-act="qksub" data-a="qkfor">锻造阁</button></div>';
       if (qs === 'qkup') {
-        html += '<div class="card"><div class="row"><div><b class="gold">造化乾坤殿</b> <span class="tag">Lv.' + lv + '</span></div><button class="btn btn-sm btn-gold" data-act="mup" data-a="qiankun">升级（灵气' + F((C.manorCost('qiankun', lv).lingqi || 0)) + '）</button></div>' +
-          '<div class="dim mt8">炼丹阁等级 Lv.' + (g.manor.lianlv || 1) + ' · 锻造阁等级 Lv.' + (g.manor.duanlv || 1) + '</div>' +
-          '<div class="dim mt8">普通集市可购买 1品炼丹炉(玄铁丹炉)/1品锻造炉(黑铁锻炉) 提升相应等级。</div></div>';
-      } else if (qs === 'qkdan') {
         html += trainCard('lian');
+        html += trainCard('duan');
+        html += '<div class="card"><div class="dim mt8">炼丹师/锻造师 可由一品修炼至十品；普通集市可购买 1品炼丹炉(玄铁丹炉)/1品锻造炉(黑铁锻炉) 提升相应炼丹师/锻造师等级。</div></div>';
+      } else if (qs === 'qkdan') {
         html += '<div class="card"><div class="row"><div><b class="gold">炼丹阁</b></div></div><div class="dim">炼制渡劫丹、聚元丹等。</div></div>';
         ['渡劫丹', '聚元丹', '聚灵丹', '回春丹'].forEach(dn => {
           const cost = { 渡劫丹: 80, 聚元丹: 30, 聚灵丹: 20, 回春丹: 15 }[dn];
           html += '<div class="shop-item"><span>' + dn + ' <span class="dim">(持有 ' + (g.items[dn] || 0) + ')</span></span><span><span class="price">灵气' + cost + '</span><button class="btn btn-sm btn-blue" data-act="alc" data-a="' + dn + '">炼制</button></span></div>';
         });
       } else {
-        html += trainCard('duan');
         html += '<div class="card"><div class="row"><div><b class="gold">锻造阁</b></div></div><div class="dim">消耗灵气打造装备。</div></div>';
         const cost = 40 + g.manor.qiankun * 15;
         html += '<div class="shop-item"><span>打造一件装备（当前灵气消耗 ' + cost + '）</span><button class="btn btn-sm btn-gold" data-act="forge">打造</button></div>';
