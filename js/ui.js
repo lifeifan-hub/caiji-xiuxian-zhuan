@@ -582,8 +582,11 @@
       if (!avail.length) changeHtml += '<div class="dim">暂无该部位装备</div>';
       avail.forEach(e => {
         const q = DATA.QMAP[e.quality];
-        const onw = g.equipped[e.iid] === key;
-        changeHtml += '<div class="eq-change-item" data-emwear="' + e.iid + '" style="color:' + qColor(q) + '">' + sl.name + '·' + e.quality + ' ' + equipStatName(slot) + '+' + equipStatVal(e) + (onw ? '<span class="green"> 已穿</span>' : '') + '</div>';
+        const owner = g.equipped[e.iid];
+        let whoTxt = '';
+        if (owner === key) whoTxt = '<span class="green"> 已穿</span>';
+        else if (owner) whoTxt = '<span class="dim"> 穿于 ' + (owner === 'hero' ? (g.heroName || '主角') : (DATA.PARTNERS.find(x => x.iid === owner) || {}).name || '') + '</span>';
+        changeHtml += '<div class="eq-change-item" data-emwear="' + e.iid + '" style="color:' + qColor(q) + '">' + sl.name + '·' + e.quality + ' ' + equipStatName(slot) + '+' + equipStatVal(e) + whoTxt + '</div>';
       });
       changeHtml += '</div>';
     }
@@ -1043,7 +1046,15 @@
     'slotopen': function (a) { S.equipModal = a; S.eqChange = false; renderEquipModal(); },
     'emchange': function () { S.eqChange = !S.eqChange; renderEquipModal(); },
     'emunequip': function () { const g = S.game, key = S.selUnit || 'hero'; const worn = g.equipment.find(x => x.slot === S.equipModal && g.equipped[x.iid] === key); if (worn) { C.unequip(g, worn.iid); C.recomputeStats(g); C.save(g); } render(); renderEquipModal(); },
-    'emwear': function (a) { C.equipTo(S.game, a, S.selUnit || 'hero'); C.recomputeStats(S.game); C.save(S.game); S.eqChange = false; render(); renderEquipModal(); },
+    'emwear': function (a) {
+      const g = S.game, key = S.selUnit || 'hero';
+      const owner = g.equipped[a];
+      if (owner && owner !== key) {
+        const oname = (owner === 'hero') ? (g.heroName || '主角') : ((g.partners.find(x => x.iid === owner) || {}).name || '');
+        if (!confirm('该装备目前由「' + oname + '」穿戴，确定换给当前单位吗？')) return;
+      }
+      C.equipTo(g, a, key); C.recomputeStats(g); C.save(g); S.eqChange = false; render(); renderEquipModal();
+    },
     'emclose': function () { S.equipModal = null; S.eqChange = false; render(); },
     'craft': function (a) { const r = C.craftFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'fab': function (a) { const r = C.equipFabao(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
