@@ -98,10 +98,8 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 #mytitle { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 #mytitle .hdr-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hdr-name { color: var(--gold2); font-size: 13px; letter-spacing: 1px; font-weight: 700; }
-.vip-badge { position: relative; margin-left: 7px; font-size: 13px; font-weight: 900; letter-spacing: 1px; cursor: pointer; white-space: nowrap; overflow: hidden; font-family: Arial, sans-serif; background: linear-gradient(90deg, #ff4d4d, #ff9a3c, #ffe14d, #52e06a, #4db6ff, #b44dff, #ff4d4d); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.vip-badge .vip-num { -webkit-background-clip: text; background-clip: text; color: transparent; }
-.vip-badge::after { content: ''; position: absolute; top: 0; bottom: 0; left: -34%; width: 26%; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.95), rgba(255,255,255,0)); animation: vipStreak 2s linear infinite; }
-@keyframes vipStreak { from { left: -34%; } to { left: 112%; } }
+.vip-badge { margin-left: 7px; font-size: 13px; font-weight: 900; letter-spacing: 1px; cursor: pointer; white-space: nowrap; font-family: Arial, sans-serif; background-image: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.95) 45%, rgba(255,255,255,0) 55%), linear-gradient(90deg, #ff4d4d, #ff9a3c, #ffe14d, #52e06a, #4db6ff, #b44dff); background-size: 200% 100%, 100% 100%; background-position: -200% 0, 0 0; background-repeat: no-repeat; -webkit-background-clip: text; background-clip: text; color: transparent; animation: vipStreak 2s linear infinite; }
+@keyframes vipStreak { from { background-position: -200% 0, 0 0; } to { background-position: 200% 0, 0 0; } }
 .vip-badge.hide { display: none; }
 #hdr-res { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; justify-content: center; }
 #hdr-res .res { font-size: 12px; color: var(--ink-dim); display: flex; align-items: baseline; gap: 3px; }
@@ -2240,7 +2238,7 @@ code.num { font-family: Consolas, monospace; }
     if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
     const vb = $('#vip-badge');
     if (vb) {
-      if (g.vip >= 1) { vb.classList.remove('hide'); vb.innerHTML = 'VIP<span class="vip-num">' + g.vip + '</span>'; }
+      if (g.vip >= 1) { vb.classList.remove('hide'); vb.textContent = 'VIP' + g.vip; }
       else vb.classList.add('hide');
     }
     const res = g.res;
