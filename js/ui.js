@@ -18,7 +18,7 @@
   const S = {
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false,
-    eqFilter: '', eqSel: {}, equipModal: null, formMode: false, swapFrom: null, cancelBattle: false,
+    eqFilter: '', eqSel: {}, equipModal: null, formMode: false, swapFrom: null, cancelBattle: false, battleMode: '',
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -215,7 +215,7 @@
       else { const p = g.partners.find(x => x.iid === u.iid); const tpl = DATA.PARTNERS.find(x => x.id === p.pid); const ps = C.unitStats(g, u.iid); const hps = ps ? ps.hp : 100; ph += slotHtml(0, i, tpl.name, ELEMC[tpl.el] || '#fff', C.partnerRealmLabel(p), hps, Math.max(1, hps), false, false, 20, tpl.q, C.colorName(tpl.q), 95, tpl.name + '·技'); }
     });
     for (let i = pu.length; i < 6; i++) ph += '<div class="slot empty" data-side="0" data-idx="' + i + '">空位</div>';
-    const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0));
+    const enemies = C.enemyForStage(stage, stage > (g.mainline.cleared || 0), S.battleMode === 'farm');
     // Boss 站位回归到阵型后方中间（保留原 data-idx，战斗动画按原索引定位）
     const disp = enemies.map((en, idx) => ({ en, idx }));
     const bp = disp.findIndex(x => x.en.boss);
@@ -899,9 +899,10 @@
   }
 
   const act = {
-    'push': function () {
-      if (S.animating) return;
-      const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+'push': function () {
+  if (S.animating) return;
+  S.battleMode = 'push';
+  const r = C.challengeMainline(S.game, (line) => addLog('main', line.msg, 'bl-' + line.cls));
       S.battleRounds = (r.res && r.res.rounds) || 0;
       S.battleStage = r.stage;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
@@ -922,10 +923,11 @@
         toast('布阵模式：点击两个道友即可互换位置');
       } else {
         // 退出布阵模式并重新开战当前关卡
-        S.formMode = false;
-        S.swapFrom = null;
-        render();
-        const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+S.formMode = false;
+S.swapFrom = null;
+render();
+S.battleMode = 'farm';
+const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
         S.battleRounds = (r.res && r.res.rounds) || 0;
         S.battleStage = r.stage;
         playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); if (r.ok) showReward(r.reward); }, r.ok ? 'win' : 'lose');
@@ -1150,9 +1152,10 @@
     const autoUnlocked = g.mainline.stage >= 30;
     if (autoUnlocked && !S.animating && !S.formMode) {
       const now = Date.now();
-      if (now - S.lastPush > 3500) {
-        S.lastPush = now;
-        const r = S.autoPush
+if (now - S.lastPush > 3500) {
+S.lastPush = now;
+S.battleMode = S.autoPush ? 'push' : 'farm';
+const r = S.autoPush
           ? C.challengeMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls))
           : C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
         S.battleRounds = (r.res && r.res.rounds) || 0;
