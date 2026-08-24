@@ -18,7 +18,7 @@
   const S = {
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'build', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false,
-    eqFilter: '', eqSel: {}, equipModal: null,
+    eqFilter: '', eqSel: {}, equipModal: null, formMode: false, swapFrom: null, cancelBattle: false,
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -224,7 +224,7 @@
       (autoUnlocked ? '' : '<small>(30关解锁)</small>') + '</span>';
     return '<div class="battle-field"><div class="bf-round"><span>第 ' + stage + ' 关 · ' + S.battleRounds + '/30回合</span></div><div class="bf-body">' +
       '<div class="bf-side">' + ph + '</div><div class="bf-vs">⚔</div><div class="bf-side">' + eh + '</div></div>' +
-      '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm" data-act="formation">🔀 布阵</button></div>' +
+      '<div class="bf-ctrl"><div class="bf-left"><button class="btn btn-sm ' + (S.formMode ? 'btn-gold' : '') + '" data-act="formation">' + (S.formMode ? '✔ 开始战斗' : '🔀 布阵') + '</button></div>' +
       '<div class="bf-mid">' + autoHtml + '</div>' +
       '<div class="bf-right"><button class="btn btn-gold btn-sm" data-act="push">挑战下一层</button></div></div></div>' +
       formationBoardHtml(g);
@@ -254,14 +254,14 @@
           qBadge = '<span class="slot-q" style="color:' + qColor(tpl.q) + '">' + C.colorName(tpl.q) + '</span>';
           ridx = p.realm.idx;
         }
-        const selCls = S.selUnit === u.iid ? ' sel' : '';
-        const selStyle = S.selUnit === u.iid ? ' style="border-color:' + REALM_COLORS[ridx] + '; box-shadow:0 0 8px ' + REALM_COLORS[ridx] + '"' : '';
+        const selCls = (S.formMode && S.swapFrom === u.iid) || (!S.formMode && S.selUnit === u.iid) ? ' sel' : '';
+        const selStyle = ((S.formMode && S.swapFrom === u.iid) || (!S.formMode && S.selUnit === u.iid)) ? ' style="border-color:' + REALM_COLORS[ridx] + '; box-shadow:0 0 8px ' + REALM_COLORS[ridx] + '"' : '';
         row += '<div class="fm-slot filled' + selCls + '" data-fm="' + u.iid + '"' + selStyle + '><div class="fm-name" style="color:' + color + '">' + qBadge + name + '</div><div class="fm-realm">' + realm + '</div></div>';
       } else {
         row += '<div class="fm-slot empty"><div class="fm-name">空位</div></div>';
       }
     }
-    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>点击模块选中 · 在次元空间·道友 上阵/下阵</small></div><div class="bf-fm-row">' + row + '</div></div>';
+    return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>' + (S.formMode ? '点击两个道友互换位置，完成后点“开始战斗”' : '点击模块选中 · 在次元空间·道友 上阵/下阵') + '</small></div><div class="bf-fm-row">' + row + '</div></div>';
   }
 
   function render() {
@@ -810,6 +810,7 @@
       el.classList.toggle('dead', cur <= 0);
     };
     for (const ev of events) {
+      if (S.cancelBattle) { S.cancelBattle = false; S.animating = false; return; }
       if (ev.type === 'round') {
         if (roundEl) roundEl.textContent = '第 ' + (S.battleStage || (S.game && S.game.mainline.stage) || '') + ' 关 · ' + ev.n + '/30回合';
         await sleep(150); continue;
@@ -826,6 +827,7 @@
       });
       if (ev.type === 'buff' && aEl) { aEl.classList.add('buff-flash'); setTimeout(() => aEl.classList.remove('buff-flash'), 450); }
       await sleep(330);
+      if (S.cancelBattle) { S.cancelBattle = false; S.animating = false; return; }
       if (aEl) aEl.classList.remove('lunge-right', 'lunge-left');
     }
     if (outcome && bf) {
@@ -876,19 +878,35 @@
       S.autoPush = !S.autoPush; C.save(S.game); render();
     },
     'formation': function () {
-      if (S.animating) { toast('战斗进行中，请稍候再布阵'); return; }
       const g = S.game;
-      const arr = g.formation.slice();
-      for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
-      g.formation = arr;
-      C.recomputeStats(g);
-      C.save(g);
-      render(); // 立即刷新布阵板，让站位交换可见
-      toast('已随机调整站位');
-      const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
-      S.battleRounds = (r.res && r.res.rounds) || 0;
-      S.battleStage = r.stage;
-      playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
+      if (!S.formMode) {
+        // 进入布阵模式（暂停战斗）
+        if (S.animating) S.cancelBattle = true;
+        S.formMode = true;
+        S.swapFrom = null;
+        render();
+        toast('布阵模式：点击两个道友即可互换位置');
+      } else {
+        // 退出布阵模式并重新开战当前关卡
+        S.formMode = false;
+        S.swapFrom = null;
+        render();
+        const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
+        S.battleRounds = (r.res && r.res.rounds) || 0;
+        S.battleStage = r.stage;
+        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
+      }
+    },
+    'swap': function (a) {
+      const g = S.game;
+      if (S.swapFrom === a) { S.swapFrom = null; render(); return; }
+      if (!S.swapFrom) { S.swapFrom = a; render(); toast('已选中，再点另一个道友互换'); return; }
+      const i1 = g.formation.indexOf(S.swapFrom), i2 = g.formation.indexOf(a);
+      if (i1 >= 0 && i2 >= 0) { const t = g.formation[i1]; g.formation[i1] = g.formation[i2]; g.formation[i2] = t; }
+      S.swapFrom = null;
+      C.recomputeStats(g); C.save(g);
+      render();
+      toast('已互换位置');
     },
     'sel': function (a) { S.selUnit = a; render(); },
     'cine': function () { playCine(); },
@@ -1032,9 +1050,9 @@
     // 装备勾选
     const eqchk = e.target.closest('[data-eqsel]');
     if (eqchk) { e.preventDefault(); e.stopPropagation(); const id = eqchk.dataset.eqsel; S.eqSel[id] = !S.eqSel[id]; render(); return; }
-    // 上阵阵容点击选中
+    // 上阵阵容点击选中/互换
     const fm = e.target.closest('[data-fm]');
-    if (fm) { act.sel(fm.dataset.fm); return; }
+    if (fm) { if (S.formMode) act.swap(fm.dataset.fm); else act.sel(fm.dataset.fm); return; }
     // 阵容槽：点击已占用 → 下阵
     const sl = e.target.closest('[data-slot]');
     if (sl) {
@@ -1075,7 +1093,7 @@
     C.tick(g, Date.now());
     // 自动战斗（第30关起解锁：勾选=推进下一档，未勾选=挂机当前关卡）
     const autoUnlocked = g.mainline.stage >= 30;
-    if (autoUnlocked && !S.animating) {
+    if (autoUnlocked && !S.animating && !S.formMode) {
       const now = Date.now();
       if (now - S.lastPush > 3500) {
         S.lastPush = now;
