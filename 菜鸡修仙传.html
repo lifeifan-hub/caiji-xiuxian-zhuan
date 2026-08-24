@@ -841,6 +841,16 @@ code.num { font-family: Consolas, monospace; }
     state.formation = state.formation || [];
     if (!state.formation.includes('hero')) state.formation = ['hero'].concat(state.formation.slice(0, 5)).slice(0, 6);
     (state.equipment || []).forEach(e => { if (e.slot === 'boots' || e.slot === 'treasure') { e.slot = e.slot === 'boots' ? 'necklace' : 'necklace'; } });
+    // 一个单位每个部位只保留一件穿戴装备（优先高品质）
+    const seenSlots = {};
+    (state.equipment || []).forEach(e => {
+      if (state.equipped && state.equipped[e.iid]) {
+        const unit = state.equipped[e.iid], q = QMAP[e.quality], k = unit + '/' + e.slot;
+        const prev = seenSlots[k];
+        if (!prev || q > prev.q) { if (prev) delete state.equipped[prev.iid]; seenSlots[k] = { iid: e.iid, q }; }
+        else delete state.equipped[e.iid];
+      }
+    });
     if (state.freeSummonAt == null) state.freeSummonAt = 0;
     return state;
   }
@@ -978,7 +988,7 @@ code.num { font-family: Consolas, monospace; }
       const b = equipBonusOf(state, e);
       flat.hp += b.flat.hp; flat.atk += b.flat.atk; flat.def += b.flat.def;
       bonus.atkPct += b.pct.atkPct; bonus.defPct += b.pct.defPct; bonus.hpPct += b.pct.hpPct;
-      bonus.spd += (e.slot === 'boots' ? Math.round(flat.spd) : 0);
+      if (P.SLOT_STAT[e.slot] === 'spd') bonus.spd += Math.round(b.flat.spd);
       bonus.crit += b.crit; bonus.elementDmg += b.elementDmg;
     });
     // 套装
