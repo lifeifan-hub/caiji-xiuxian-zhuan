@@ -123,7 +123,7 @@
     if (nameEl) nameEl.textContent = g.heroName || RACE[g.race].name + '道友';
     const vb = $('#vip-badge');
     if (vb) {
-      if (g.vip >= 1) { vb.classList.remove('hide'); vb.innerHTML = 'VIP<span class="vip-num">' + g.vip + '</span>'; }
+      if (g.vip >= 1) { vb.classList.remove('hide'); vb.textContent = 'VIP' + g.vip; }
       else vb.classList.add('hide');
     }
     const res = g.res;
