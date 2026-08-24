@@ -263,6 +263,15 @@
     }
     return '<div class="bf-fm"><div class="bf-fm-t">上阵阵容 <small>' + (S.formMode ? '点击两个道友互换位置，完成后点“开始战斗”' : '点击模块选中 · 在次元空间·道友 上阵/下阵') + '</small></div><div class="bf-fm-row">' + row + '</div></div>';
   }
+  function showReward(rw) {
+    const bf = document.querySelector('.battle-field');
+    if (!bf || !rw) return;
+    const d = document.createElement('div');
+    d.className = 'bf-reward';
+    d.innerHTML = '<div>获得铜钱 <b>' + F(rw.copper) + '</b></div><div>获得修为 <b>' + F(rw.xiuwei) + '</b></div>';
+    bf.appendChild(d);
+    setTimeout(() => { if (d.parentNode) d.remove(); }, 2600);
+  }
 
   function render() {
     renderHeader();
@@ -871,7 +880,7 @@
       S.battleRounds = (r.res && r.res.rounds) || 0;
       S.battleStage = r.stage;
       if (r.ok) addLog('main', '✔ 通关第 ' + r.stage + ' 关，修为+' + F(r.reward.xiuwei) + ' 铜钱+' + F(r.reward.copper), 'bl-system');
-      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); }, r.ok ? 'win' : 'lose');
+      playBattle((r.res && r.res.events) || [], () => { C.save(S.game); render(); if (r.ok) showReward(r.reward); }, r.ok ? 'win' : 'lose');
     },
     'auto': function () {
       if (S.game.mainline.stage < 30) { toast('自动推关需先通关第30关后解锁'); return; }
@@ -894,7 +903,7 @@
         const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls));
         S.battleRounds = (r.res && r.res.rounds) || 0;
         S.battleStage = r.stage;
-        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : 'lose');
+        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); if (r.ok) showReward(r.reward); }, r.ok ? 'win' : 'lose');
       }
     },
     'swap': function (a) {
@@ -1103,7 +1112,7 @@
         S.battleRounds = (r.res && r.res.rounds) || 0;
         S.battleStage = r.stage;
         if (r.ok) addLog('main', S.autoPush ? ('✔ 自动通关第 ' + r.stage + ' 关') : ('✔ 挂机通关当前第 ' + r.stage + ' 关'), 'bl-system');
-        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
+        playBattle((r.res && r.res.events) || [], () => { C.save(g); render(); if (r.ok) showReward(r.reward); }, r.ok ? 'win' : (r.res && r.res.timeout ? 'timeout' : 'lose'));
       }
     }
     C.save(g);
