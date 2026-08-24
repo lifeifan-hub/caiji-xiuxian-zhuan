@@ -100,7 +100,7 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 #stamline { font-size: 12px; color: var(--cyan); margin-top: 6px; }
 
 /* 主视图 */
-#cview { flex: 1; padding: 14px 14px 90px; }
+#cview { flex: 1; padding: 14px 14px 90px; max-width: 640px; margin: 0 auto; width: 100%; }
 #battle-win { padding: 14px 14px 0; }
 .sec-title { font-weight: 700; color: var(--gold); letter-spacing: 1px; margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .sec-title:first-child { margin-top: 0; }
@@ -214,7 +214,12 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .price { color: var(--gold); font-weight: 600; }
 .eq-worn { display: flex; gap: 8px; }
 .eq-slot-line { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 5px; text-align: center; background: rgba(0,0,0,.25); }
+.eq-slot-line.filled { cursor: pointer; }
 .eq-slot-name { font-size: 11px; color: var(--gold); display: block; margin-bottom: 3px; }
+.eq-q { display: block; font-size: 10px; margin-top: 1px; }
+.eq-change { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; max-height: 210px; overflow: auto; }
+.eq-change-item { padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 13px; }
+.eq-change-item:last-child { border-bottom: none; }
 .eq-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .eq-toolbar .btn { padding: 4px 8px; font-size: 12px; }
 .eq-row { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 8px 2px; cursor: pointer; }
