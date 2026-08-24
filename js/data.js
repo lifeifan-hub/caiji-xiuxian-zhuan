@@ -208,14 +208,13 @@
   // ---------- 装备槽位 ----------
   const SLOTS = [
     { id: 'weapon', name: '武器' },
-    { id: 'armor', name: '防具' },
-    { id: 'boots', name: '靴子' },
-    { id: 'accessory', name: '饰品' },
-    { id: 'treasure', name: '灵宝' }
+    { id: 'armor', name: '胸甲' },
+    { id: 'accessory', name: '玉佩' },
+    { id: 'necklace', name: '项链' }
   ];
   const EQUIP_QUALITY = ['白', '绿', '蓝', '紫', '金', '红'];
   // 主属性随槽位变化
-  const SLOT_STAT = { weapon: 'atk', armor: 'def', boots: 'spd', accessory: 'hp', treasure: 'atk' };
+  const SLOT_STAT = { weapon: 'atk', armor: 'def', accessory: 'hp', necklace: 'spd' };
   // 套装
   const SETS = {
     '青锋': { pieces: 2, bonus: { atk: 6 } },
