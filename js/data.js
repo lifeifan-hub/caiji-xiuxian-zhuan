@@ -214,7 +214,7 @@
   ];
   const EQUIP_QUALITY = ['白', '绿', '蓝', '紫', '金', '红'];
   // 主属性随槽位变化
-  const SLOT_STAT = { weapon: 'atk', armor: 'def', accessory: 'hp', necklace: 'spd' };
+  const SLOT_STAT = { weapon: 'atk', armor: 'def', accessory: 'hp', necklace: 'def' };
   // 套装
   const SETS = {
     '青锋': { pieces: 2, bonus: { atk: 6 } },
