@@ -20,7 +20,7 @@ with open(os.path.join(ROOT, 'bgm.wav'), 'rb') as f:
 audio_src = 'data:audio/wav;base64,' + b64
 
 # 1) CSS 内联
-old_css = '<link rel="stylesheet" href="css/style.css?v=27">'
+old_css = '<link rel="stylesheet" href="css/style.css?v=28">'
 assert old_css in html, '未找到 CSS 链接'
 html = html.replace(old_css, '<style>\n' + css + '\n</style>')
 
@@ -30,9 +30,9 @@ assert old_audio in html, '未找到 audio 标签'
 html = html.replace(old_audio, '<audio id="bgm" src="%s" loop preload="auto"></audio>' % audio_src)
 
 # 3) JS 内联
-for tag in ['<script src="js/data.js?v=27"></script>',
-            '<script src="js/core.js?v=27"></script>',
-            '<script src="js/ui.js?v=27"></script>']:
+for tag in ['<script src="js/data.js?v=28"></script>',
+            '<script src="js/core.js?v=28"></script>',
+            '<script src="js/ui.js?v=28"></script>']:
     assert tag in html, '未找到脚本: ' + tag
     html = html.replace(tag, '')
 js = djs + '\n' + cjs + '\n' + ujs
