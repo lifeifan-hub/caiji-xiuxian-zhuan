@@ -198,6 +198,15 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .p-cardmid small { color: var(--dim); }
 .p-ele { display: inline-block; font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); margin-right: 3px; }
 .p-btncol { text-align: right; }
+/* 道友-压缩卡片 & 详情技能 */
+.partner-card.compact { padding: 6px 8px; margin-bottom: 6px; gap: 8px; border-radius: 8px; }
+.partner-card.compact .p-cardmid b { font-size: 14px; }
+.partner-card.compact .p-cardmid small { font-size: 12px; }
+.partner-card.compact .p-btncol .btn { padding: 3px 9px; font-size: 12px; }
+.partner-card.compact input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--red); flex: 0 0 16px; }
+.skill-block { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; text-align: left; }
+.pub-skill { margin-bottom: 8px; font-size: 13px; }
+.pub-skill b { color: var(--gold2); }
 
 /* 上阵 / 聚灵阵 */
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
