@@ -616,6 +616,7 @@
     Object.keys(state.equipped).forEach(k => { if (state.equipped[k] === iid) delete state.equipped[k]; });
     state.formation = state.formation.filter(x => x !== iid);
     state.juling = state.juling.filter(x => x !== iid);
+    if (state.wanxiang) state.wanxiang = state.wanxiang.filter(x => x !== iid);
     const name = partnerTpl(p.pid).name;
     state.partners.splice(idx, 1);
     recomputeStats(state);
