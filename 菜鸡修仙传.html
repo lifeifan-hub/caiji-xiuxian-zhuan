@@ -207,6 +207,15 @@ header { position: sticky; top: 0; z-index: 20; background: rgba(15,11,30,.92); 
 .p-cardmid small { color: var(--dim); }
 .p-ele { display: inline-block; font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); margin-right: 3px; }
 .p-btncol { text-align: right; }
+/* 道友-压缩卡片 & 详情技能 */
+.partner-card.compact { padding: 6px 8px; margin-bottom: 6px; gap: 8px; border-radius: 8px; }
+.partner-card.compact .p-cardmid b { font-size: 14px; }
+.partner-card.compact .p-cardmid small { font-size: 12px; }
+.partner-card.compact .p-btncol .btn { padding: 3px 9px; font-size: 12px; }
+.partner-card.compact input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--red); flex: 0 0 16px; }
+.skill-block { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; text-align: left; }
+.pub-skill { margin-bottom: 8px; font-size: 13px; }
+.pub-skill b { color: var(--gold2); }
 
 /* 上阵 / 聚灵阵 */
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1334,6 +1343,7 @@ code.num { font-family: Consolas, monospace; }
     Object.keys(state.equipped).forEach(k => { if (state.equipped[k] === iid) delete state.equipped[k]; });
     state.formation = state.formation.filter(x => x !== iid);
     state.juling = state.juling.filter(x => x !== iid);
+    if (state.wanxiang) state.wanxiang = state.wanxiang.filter(x => x !== iid);
     const name = partnerTpl(p.pid).name;
     state.partners.splice(idx, 1);
     recomputeStats(state);
@@ -2232,6 +2242,7 @@ code.num { font-family: Consolas, monospace; }
     game: null, tab: 'main', race: null, elem: null,
     slotSel: -1, equipUnit: 'hero', shop: 'market', manorSub: 'lingmai', dimSub: 'items', selUnit: 'hero', autoPill: false, singlePill: false, qiankunSub: 'qkup',
     eqFilter: '', eqSel: {}, equipModal: null, formMode: false, swapFrom: null, cancelBattle: false, battleMode: '',
+    bulkDismiss: false, bulkSel: {}, partnerModal: null,
     logMain: [], logDungeon: [], autoPush: false, battleRounds: 0, battleStage: 0, animating: false,
     lastPush: 0
   };
@@ -2840,6 +2851,45 @@ code.num { font-family: Consolas, monospace; }
       changeHtml + '</div>';
     document.body.appendChild(d);
   }
+  function renderPartnerModal() {
+    const old = document.getElementById('partner-modal');
+    if (old) old.remove();
+    if (!S.partnerModal) return;
+    const g = S.game;
+    const p = g.partners.find(x => x.iid === S.partnerModal);
+    if (!p) { S.partnerModal = null; return; }
+    const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+    const st = C.unitStats(g, p.iid) || { atk: 0, hp: 0, def: 0, spd: 0 };
+    const qc = qColor(tpl.q);
+    const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid), inWx = g.wanxiang.includes(p.iid);
+    function targetTxt(tg) { return { one: '单体', all: '全体', allylow: '友方最低', two: '两个目标', self: '自身' }[tg] || tg; }
+    function typeTxt(ty) { return { dmg: '伤害', heal: '治疗', buff: '增益', debuff: '减益' }[ty] || ty; }
+    const skHtml = (tpl.skills || []).map((sid, i) => {
+      const sk = DATA.SKILLS[sid];
+      if (!sk) return '';
+      const label = i === 0 ? '普通技能' : (i === tpl.skills.length - 1 ? '专属技能' : '技能' + (i + 1));
+      return '<div class="pub-skill"><b>' + label + ' · ' + sk.name + '</b>' +
+        '<span class="dim"> ' + typeTxt(sk.type) + (sk.mult ? ' ' + (Math.round(sk.mult * 100)) + '%' : '') + ' · 目标：' + targetTxt(sk.target) + '</span>' +
+        (sk.desc ? '<div class="dim">' + sk.desc + '</div>' : '') + '</div>';
+    }).join('');
+    const d = document.createElement('div');
+    d.id = 'partner-modal';
+    d.className = 'eq-modal';
+    d.innerHTML = '<div class="eq-modal-card">' +
+      '<div class="eq-modal-title" style="color:' + qc + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span> · ★' + p.stars + '</div>' +
+      '<div class="dim" style="text-align:center;margin-top:4px">' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ' + tpl.el + '属性</div>' +
+      '<div class="eq-modal-stat">攻击 ' + F(st.atk) + ' · 生命 ' + Math.round(st.hp) + '<br>物防 ' + F(st.def) + ' · 法防 ' + F(st.def) + ' · 速度 ' + Math.round(st.spd) + '</div>' +
+      '<div class="eq-modal-btns">' +
+        '<button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button>' +
+        '<button class="btn btn-sm ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出聚灵' : '聚灵') + '</button>' +
+        '<button class="btn btn-sm" data-act="tribp" data-a="' + p.iid + '">渡劫</button>' +
+        '<button class="btn btn-sm btn-red" data-act="dismiss" data-a="' + p.iid + '">遣散</button>' +
+      '</div>' +
+      '<div class="skill-block">' + (skHtml || '<div class="dim">暂无技能。</div>') + '</div>' +
+      '<div class="eq-modal-btns"><button class="btn btn-sm" data-act="pmclose">关闭</button></div>' +
+      '</div>';
+    document.body.appendChild(d);
+  }
   function renderVipModal() {
     const old = document.getElementById('vip-modal');
     if (old) old.remove();
@@ -2885,19 +2935,46 @@ code.num { font-family: Consolas, monospace; }
   }
   function dimPartnerHtml(g) {
     let html = '<div class="card"><div class="sec-title" style="margin:0">道友 <span class="muted">共 ' + g.partners.length + ' 位</span></div>';
+    const bd = S.bulkDismiss;
+    // 批量遣散工具栏
+    html += '<div class="eq-toolbar">';
+    html += bd
+      ? '<button class="btn btn-sm btn-red" data-act="bulkdismiss">退出批量</button>'
+      : '<button class="btn btn-sm btn-red" data-act="bulkdismiss">批量遣散</button>';
+    if (bd) {
+      html += '<button class="btn btn-sm" data-act="bulkq" data-a="2">选蓝</button>';
+      html += '<button class="btn btn-sm" data-act="bulkq" data-a="3">选紫</button>';
+      html += '<button class="btn btn-sm" data-act="bulkq" data-a="4">选金</button>';
+      html += '<button class="btn btn-sm" data-act="bulkclear">清空</button>';
+    }
+    html += '</div>';
     if (!g.partners.length) html += '<div class="dim mt8">暂无敌友，用招募令或紫气招募。</div>';
     g.partners.forEach(p => {
       const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
-      const st = C.unitStats(g, p.iid) || { atk: 0, hp: 0 };
-      const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid);
-      html += '<div class="partner-card"><div class="p-cardleft" style="color:' + qColor(tpl.q) + ';border-color:currentColor">' + tpl.el + '</div>' +
-        '<div class="p-cardmid"><h4 style="color:' + qColor(tpl.q) + '">' + tpl.name + ' <span class="tag">' + C.colorName(tpl.q) + '</span></h4>' +
-        '<small>' + ROLES[tpl.role] + ' · ' + C.partnerRealmLabel(p) + ' · ★' + p.stars + ' · 攻' + F(st.atk) + ' 生命' + Math.round(st.hp) + '</small></div>' +
-        '<div class="p-btncol"><button class="btn btn-sm ' + (inF ? 'btn-red' : 'btn-green') + '" data-act="fld" data-a="' + p.iid + '">' + (inF ? '下阵' : '上阵') + '</button><br>' +
-        '<button class="btn btn-sm mt8 ' + (inJ ? 'btn-red' : 'btn-blue') + '" data-act="jld" data-a="' + p.iid + '">' + (inJ ? '移出' : '聚灵') + '</button><br>' +
-        '<button class="btn btn-sm mt8" data-act="tribp" data-a="' + p.iid + '">渡劫</button><br>' +
-        '<button class="btn btn-sm mt8 btn-red" data-act="dismiss" data-a="' + p.iid + '">遣散</button></div></div>';
+      const qc = qColor(tpl.q);
+      const inF = g.formation.includes(p.iid), inJ = g.juling.includes(p.iid), inWx = g.wanxiang.includes(p.iid);
+      const inTeams = inF || inJ || inWx;
+      if (bd) {
+        const sel = S.bulkSel[p.iid];
+        const dis = inTeams ? ' disabled' : '';
+        html += '<div class="partner-card compact' + (sel ? ' sel' : '') + '"' + (inTeams ? '' : ' data-bulk="' + p.iid + '"') + '>' +
+          '<input type="checkbox" data-bulksel="' + p.iid + '"' + (sel ? ' checked' : '') + dis + '>' +
+          '<div class="p-cardmid"><b style="color:' + qc + '">' + tpl.name + '</b>' +
+          '<small>' + C.partnerRealmLabel(p) + (inTeams ? '（上阵/聚灵/万象中，不可遣散）' : '') + '</small></div>' +
+          '</div>';
+      } else {
+        html += '<div class="partner-card compact" data-act="opendetail" data-a="' + p.iid + '">' +
+          '<div class="p-cardmid"><b style="color:' + qc + '">' + tpl.name + '</b>' +
+          '<small>' + C.partnerRealmLabel(p) + '</small></div>' +
+          '<div class="p-btncol"><button class="btn btn-sm btn-red" data-act="dismiss" data-a="' + p.iid + '">遣散</button></div>' +
+          '</div>';
+      }
     });
+    if (bd) {
+      const n = Object.keys(S.bulkSel).filter(k => S.bulkSel[k]).length;
+      html += '<div class="eq-toolbar mt8"><button class="btn btn-sm btn-red" data-act="bulkdo"' + (n ? '' : ' disabled') + '>遣散选中（' + n + '）</button></div>';
+      html += '<div class="dim mt8">勾选蓝色/紫色/金色道友可一键遣散（红卡请手动确认）；正在上阵/聚灵/万象中的道友不会被遣散。</div>';
+    }
     html += '</div>';
     return html;
   }
@@ -3189,6 +3266,39 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
     'sel': function (a) { S.selUnit = a; render(); },
     'vip': function () { renderVipModal(); },
     'closevip': function () { const m = document.getElementById('vip-modal'); if (m) m.remove(); },
+    'opendetail': function (a) { S.partnerModal = a; renderPartnerModal(); },
+    'pmclose': function () { S.partnerModal = null; render(); },
+    'bulkdismiss': function () {
+      S.bulkDismiss = !S.bulkDismiss;
+      if (!S.bulkDismiss) S.bulkSel = {};
+      render();
+    },
+    'bulkq': function (a) {
+      const q = +a || 0;
+      const g = S.game;
+      g.partners.forEach(p => {
+        const tpl = DATA.PARTNERS.find(x => x.id === p.pid);
+        if (tpl.q !== q) return;
+        if (g.formation.includes(p.iid) || g.juling.includes(p.iid) || g.wanxiang.includes(p.iid)) return;
+        S.bulkSel[p.iid] = true;
+      });
+      render();
+    },
+    'bulkclear': function () { S.bulkSel = {}; render(); },
+    'bulkdo': function () {
+      const g = S.game;
+      const ids = Object.keys(S.bulkSel).filter(k => S.bulkSel[k]);
+      if (!ids.length) { toast('请先勾选要遣散的道友'); return; }
+      if (!confirm('确定遣散选中的 ' + ids.length + ' 位道友吗？身上装备将退回背包。')) { toast('已取消'); return; }
+      let n = 0;
+      ids.forEach(iid => {
+        if (g.formation.includes(iid) || g.juling.includes(iid) || g.wanxiang.includes(iid)) return;
+        const r = C.dismissPartner(g, iid);
+        if (r.ok) n++;
+      });
+      S.bulkSel = {}; S.bulkDismiss = false;
+      C.save(g); toast('已遣散 ' + n + ' 位道友'); render();
+    },
     'cine': function () { playCine(); },
     'layerup': function () {
       const r = C.breakthroughLayer(S.game, S.autoPill || S.singlePill);
@@ -3256,7 +3366,7 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
     'alc': function (a) { const r = C.alchemy(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'use': function (a) { const r = C.useItem(S.game, a); toast(r.msg); if (r.ok) C.save(S.game); render(); },
     'forge': function () { const r = C.forgeEquip(S.game); toast(r.msg); if (r.ok) C.save(S.game); render(); },
-    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, S.autoPill || S.singlePill); S.singlePill = false; toast(r.msg); if (r.ok) { C.save(S.game); render(); } },
+    'tribp': function (a) { const r = C.partnerTribulate(S.game, a, S.autoPill || S.singlePill); S.singlePill = false; toast(r.msg); if (r.ok) { C.save(S.game); render(); } if (S.partnerModal) renderPartnerModal(); },
     'dismiss': function (a) {
       const g = S.game;
       const p = g.partners.find(x => x.iid === a);
@@ -3266,6 +3376,7 @@ const r = C.farmMainline(g, (line) => addLog('main', line.msg, 'bl-' + line.cls)
       const r = C.dismissPartner(g, a);
       toast(r.msg);
       if (r.ok) { C.save(g); render(); }
+      if (S.partnerModal) renderPartnerModal();
     },
     'fld': function (a) {
       const g = S.game;
@@ -3277,6 +3388,7 @@ if (a !== 'hero' && g.wanxiang.includes(a)) g.wanxiang = g.wanxiang.filter(x => 
 g.formation.push(a);
 }
       C.recomputeStats(g); C.save(g); render();
+      if (S.partnerModal) renderPartnerModal();
     },
     'jld': function (a) {
       const g = S.game;
@@ -3287,6 +3399,7 @@ g.formation.push(a);
         g.juling.push(a);
       }
       C.recomputeStats(g); C.save(g); render();
+      if (S.partnerModal) renderPartnerModal();
     },
     'equnit': function (a) { S.equipUnit = a; render(); },
     'eq': function (a) { const r = C.equipTo(S.game, a, S.selUnit || 'hero'); toast(r.msg); if (r.ok) C.save(S.game); render(); if (S.equipModal) renderEquipModal(); },
@@ -3361,6 +3474,9 @@ g.formation.push(a);
     // 装备勾选
     const eqchk = e.target.closest('[data-eqsel]');
     if (eqchk) { e.preventDefault(); e.stopPropagation(); const id = eqchk.dataset.eqsel; S.eqSel[id] = !S.eqSel[id]; render(); return; }
+    // 批量遣散：点击道友卡片切换勾选
+    const bk = e.target.closest('[data-bulk]');
+    if (bk) { e.preventDefault(); const id = bk.dataset.bulk; S.bulkSel[id] = !S.bulkSel[id]; render(); return; }
     // 上阵阵容点击选中/互换
     const fm = e.target.closest('[data-fm]');
     if (fm) { if (S.formMode) act.swap(fm.dataset.fm); else act.sel(fm.dataset.fm); return; }
